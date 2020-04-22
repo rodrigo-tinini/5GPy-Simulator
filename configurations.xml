@@ -17,7 +17,12 @@
         <limitAxisX>2</limitAxisX>
         <!-- Values to increase the size of each base station regarding its representation on a cartesian plane -->
         <stepAxisY>1</stepAxisY>
-        <stepAxisX>1</stepAxisX>       
+        <stepAxisX>1</stepAxisX>
+        <CoordinateX1>100</CoordinateX1>
+        <CoordinateX2>100</CoordinateX2>
+        <CoordinateY1>100</CoordinateY1>
+        <CoordinateY2>100</CoordinateY2>
+        <signalStrength>10000</signalStrength>
     </InputParameters>
 
 <!-- RRHs -->
