@@ -29,6 +29,7 @@ class Frame(object):
 		self.dst = dst
 		self.nextHop = []
 		self.inversePath = []#return path
+		self.aType = None
 		#self.localTransmissionTime = localTransmissionTime
 		#self.procTime = procTime
 		#self.switchTime = switchTime
@@ -53,8 +54,10 @@ class UserEquipment(object):
 		self.aId = aId
 		self.servingRRH = servingRRH
 		#set the beginning position of each UE as the middle of its base station area
-		self.posY = self.servingRRH.y2/2 
-		self.posX = self.servingRRH.x2/2 
+		#self.posY = self.servingRRH.y2/2 
+		#self.posX = self.servingRRH.x2/2 
+		self.posY = 0 
+		self.posX = 0
 		#self.frameProcTime = frameProcTime
 		self.localTransmissionTime = localTransmissionTime
 		self.applicationType = applicationType
@@ -64,7 +67,14 @@ class UserEquipment(object):
 		self.latency = 0.0
 		self.jitter = 0.0
 		self.lastLatency = 0.0
+		self.signalStrength = self.servingRRH.signalStrength
 
+	#this method verifies the RSSI of the signal of the UE and triggers the CoMP process if it is below the threshold (however, the processing of the CoMP set will be delegated to another method)
+	#when triggering the CoMP process, the UE will send its position
+	def checkInterference(self):
+		if self.signalStrength < 5000:#an arbitrary value for the RSSI threshold
+			print("RRH {} Sending CSI to {}".format(self.aId, self.servingRRH.aId))
+			self.servingRRH.comp_notifications.put(self)
 
 	#TODO VOU MUDAR DE NOVO. OS UE NAO VAO GERAR QUADROS, APENAS ANDAR. O RRH AO GERAR O FRAME CPRI ASSUMIRÁ QUE RECEBEU UM QUADRO DE CADA UE
 	#O CALCULO DO JITTER E DA TRANSMISSÃO SERÁ FEITO EM CIMA DA POSIÇÃO EM QUE CADA UE SE ENCONTRAR QUANDO O RRH GERAR O FRAME CPRI E QUANDO DEVOLVER (HIPOTETICAMENTE) O QUADRO A CADA UE
@@ -72,79 +82,36 @@ class UserEquipment(object):
 	def run(self):
 		i = 0
 		while True:
-			#if i == 0:
-				#yield self.env.timeout(self.servingRRH.cpriFrameGenerationTime)
-				#self.timeSend[i] = self.env.now
-				#newFrame = Frame(i, None, self, None)
-				#print("UE {} generating First frame {} to RRH {} at {}".format(hash(self), i, self.servingRRH.aId, self.env.now))
-				#yield self.env.timeout(self.localTransmissionTime)
-				#self.servingRRH.received_users_frames.put(self)
-				#self.servingRRH.received_users_frames.put(newFrame)
-			#else:#after generating the first frame, only generate response frames as soon as it get an ACK
-				#f = yield self.ackFrames.get()
-				#del f
-				#update the time when the ACK for frame i was received
-				#self.timeReceived[i] = self.env.now
-				#yield self.env.timeout(self.localTransmissionTime+self.servingRRH.cpriFrameGenerationTime)#wait for the frame generation windows and transmission time to put it on the RRH
-				#print("UE {} sending ACK frame {} to RRH {} at {}".format(hash(self), i, self.servingRRH.aId, self.env.now))
-				#self.servingRRH.received_users_frames.put(self)
 			#timeout for the UE to move
 			yield self.env.timeout(0.5)
 			self.randomWalk()
 			#print("UE {} moved to position X = {} and Y = {}".format(hash(self), self.posX, self.posY))
 			i += 1
-	#def run(self):
-	#	i = 0
-	#	while True:
-			#if the UE is recently generated (i = 0), generate the first frame to the RRH
-	#		if i == 0:
-	#			newFrame = Frame(i, None, self, None)
-	#			print("UE {} sending the first frame to RRH {} at {}".format(self.aId, self.servingRRH.aId, self.env.now))
-	#			yield self.env.timeout(self.localTransmissionTime)
-	#			self.servingRRH.received_users_frames.put(newFrame)
-			#timeout for the UE to move
-	#		yield self.env.timeout(0.005)
-			#print("UE {} moved to position X {} and Y {}".format(self.aId, self.posX, self.posY))
-	#		i += 1
-	
 
-	#EU PASSEI ISSO PARA A FUNÇÃO ACIMA, POIS O UE GERA UM QUADRO E NO MESMO LOOP ESPERA A RESPOSTA PARA MANDAR OUTRO
-	#send frames to its RRH	after it receives an ACK message
-	'''
-	def sendFrame(self):
-		i = 0
-		while True:
-			f = yield self.ackFrames.get()
-			del f
-			#print(psutil.virtual_memory())
-			#print("UE {} received ack from {} at {}".format(self.aId, self.servingRRH.aId, self.env.now))
-			newFrame = Frame(i, None, self, None)
-			yield self.env.timeout(self.localTransmissionTime)
-			#print("UE {} sending frame {} to RRH {} at {}".format(self.aId, newFrame.aId, self.servingRRH.aId, self.env.now))
-			self.servingRRH.received_users_frames.put(newFrame)
-			i += 1
-	'''
-	#TODO: Implement the limits of the UE to move (the combinations of the maximum values of axis y and x)
 	#moves the UE
 	def randomWalk(self):
 		val = random.randint(1, 4)
 		if val == 1:
-			self.posX += 1
-			self.posY = self.posY 
+			if self.posX + 1 <= self.servingRRH.CoordinateX1:
+				self.posX += 1
+				self.posY = self.posY 
 		if val == 2:
-			self.posX -= 1
-			self.posY = self.posY 
+			if self.posX -1 >= self.servingRRH.CoordinateX2:
+				self.posX -= 1
+				self.posY = self.posY 
 		elif val == 3:
-			self.posX = self.posX 
-			self.posY += 1
+			if self.posY + 1 <= self.servingRRH.CoordinateY1:
+				self.posX = self.posX 
+				self.posY += 1
 		else:
-			self.posX = self.posX 
-			self.posY -= 1
+			if self.posX - 1 >= self.servingRRH.CoordinateY2:
+				self.posX = self.posX 
+				self.posY -= 1
 
 #this class represents a generic RRH
 #it generates a bunch of UEs, receives/transmits baseband signals from/to them, generate eCPRI frames and send/receive them to/from processing
 class RRH(object):
-	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode):
+	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode, x1, x2, y1, y2, signalStrength):
 		self.env = env
 		self.nextNode = None
 		self.aType = "RRH"
@@ -172,11 +139,16 @@ class RRH(object):
 		self.localTransmissionTime = localTransmissionTime
 		self.graph = graph
 		self.cpriMode = cpriMode
+		self.comp_notifications = simpy.Store(self.env)#waits for a CoMP solicitation from a UE
+		self.comp_monitor = self.env.process(self.triggerCoMP())#waits for a RSSI notification from the UE
 		#limiting coordinates of the base station area
-		self.x1 = 0
-		self.x2 = 0
-		self.y1 = 0
-		self.y2 = 0
+		self.CoordinateX1 = x1
+		self.CoordinateX2 = x2
+		self.CoordinateY1 = y1
+		self.CoordinateY2 = y2
+		#adjacent RRHs. each range of coordinates of the RRH will have a list of adjacent RRHs
+		self.adjacencies = {}#each key is a range of coordinates expressed as a tuple, for instance, {("x1")}
+		self.signalStrength = signalStrength
 
 	#this method generates users equipments
 	def run(self):
@@ -196,6 +168,45 @@ class RRH(object):
 			r = yield self.received_users_frames.get()
 			self.frames.append(r)
 
+	#generate a CPRI frame
+	def cpriFrameGeneration(self, aId, payLoad, src, dst, QoS, size, frame_id):
+		#take each UE and put it into the CPRI frame
+		activeUsers = []
+		if src.users:
+			for i in src.users:
+				activeUsers.append(i)
+		#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
+		CPRIFrame = ecpriFrame(src.aId+"->"+str(frame_id), None, src, "Cloud:0", activeUsers, None, None)
+		#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
+		if src.users:
+			for i in src.users:
+				i.lastLatency = i.latency
+				i.latency = (i.latency + self.env.now)/frame_id
+		return CPRIFrame
+
+	#generate the eCPRI frame
+	def e_CpriFrameGeneration(self, aId, payLoad, src, dst, QoS, size, frame_id):
+		activeUsers = []
+		if src.users:
+			for i in src.users:
+				activeUsers.append(i)
+		frame_size = len(activeUsers)
+		eCPRIFrame = ecpriFrame(src.aId+"->"+str(frame_id), None, src, "Cloud:0", activeUsers, None, frame_size)
+		#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
+		if src.users:
+			for i in src.users:
+				i.latency = (i.latency + self.env.now)/frame_id
+		return eCPRIFrame
+
+
+	#this method triggers the CoMP process for an UE
+	def triggerCoMP(self):
+		while True:
+			#waits for an UE to send a message informing that
+			comp_request = yield self.comp_notifications.get()
+			print("Processing CoMP for UE {}".format(comp_request.aId))
+			#verify the position of the UE and build the CoMP Set for it
+
 	#this method builds a eCPRI frame and uplink transmits it to a optical network element
 	#ESSE MÉTODO NÃO AGUARDA RECEBER QUADROS DOS USUÁRIOS, MAS QUANDO VAI GERAR O QUADRO CPRI, PEGA A POSIÇÃO DE CADA UE ATIVO PARA PODER CALCULAR A LATENCIA E O JITTER DE CADA UE BASEANDO-SE NA POSIÇÃO DELES
 	#EM RELAÇÃO A CARGA DO FRAME eCPRI, A QUANTIDADE DE USUÁRIOS ATIVOS IRÁ INFLUENCIAR. NO CASO DO CPRI NORMAL, INDEPENDENTE DA QUANTIDADE DE UEs ATIVOS, A CARGA DO FRAME VAI SER SEMPRE A MESMA
@@ -206,33 +217,17 @@ class RRH(object):
 		length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
 		while True:
 			yield self.env.timeout(self.cpriFrameGenerationTime)
-			print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-			#print(psutil.virtual_memory())
+			#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+			print(psutil.virtual_memory())
 			#If traditional CPRI is used, create a frame with fixed bandwidth
-			activeUsers = []
+			#activeUsers = []
 			if self.cpriMode == "CPRI":
-				#take each UE and put it into the CPRI frame
-				if self.users:
-					for i in self.users:
-						activeUsers.append(i)
-				#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
-				eCPRIFrame = ecpriFrame(self.aId+"->"+str(frame_id), None, self, "Cloud:0", activeUsers, None, None)
-				#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
-				if self.users:
-					for i in self.users:
-						i.lastLatency = i.latency
-						i.latency = (i.latency + self.env.now)/frame_id
+				print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+				eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
 				generatedCPRI += 1
 			elif self.cpriMode == "eCPRI":
-				if self.users:
-					for i in self.users:
-						activeUsers.append(i)
-				frame_size = len(activeUsers)
-				eCPRIFrame = ecpriFrame(frame_id, None, self, "Cloud:0", activeUsers, None, frame_size)
-				#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
-				if self.users:
-					for i in self.users:
-						i.latency = (i.latency + self.env.now)/frame_id
+				print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+				eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
 			#calculates the shortest path
 			#length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
 			#remove the aId of this node from the path
@@ -252,6 +247,7 @@ class RRH(object):
 			destiny.currentLoad += 1
 			#print("Frame {} generated".format(eCPRIFrame.aId))
 			frame_id += 1
+
 	#This method hipothetically sends an ACK to each UE. The ACK message is modeled as an update on the received time attribute of each UE.
 	#The received time is update as a function of the time to send a frame to each UE regarding the distance of each UE from the RRH
 	#Note that the calculation of the latency to send the frame in function of the UE position is not yet implemented
@@ -260,10 +256,8 @@ class RRH(object):
 		frame_id = 1
 		while True:
 			#print(psutil.virtual_memory())
-			print("{} transmitting to its UEs".format(self.aId))
 			received_frame = yield self.processingQueue.get()
-			#yield self.env.timeout(frameProcTime)
-			#send an ack to each UE within this received eCPRI frame
+			print("{} transmitting to its UEs".format(self.aId))
 			if received_frame.users:
 				for i in received_frame.users:
 					yield self.env.timeout(self.localTransmissionTime)
@@ -271,75 +265,11 @@ class RRH(object):
 					#i.timeReceived[i] = self.env.now
 					#TODO: Implement the jitter calculation, using the lastLatency variable
 					i.jitter = (i.latency + self.env.now)/frame_id
-			#update the load on the buffer after processing the frame
-			self.currentLoad -= 1
-			del received_frame
-			#received_frame = None
-			frame_id += 1
-	
-'''	
-	#ESSE É O MÉTODO ANTIGO, QUE RECEBIA QUADROS DOS UES.
-	#it waits for the time interval for eCPRI frame generation, takes frames previously received and generate the eCPRI frame
-	#THIS IS IMPORTANT, IT IS GENERATING CPRI FRAMES EVEN WHEN UEs ARE NOT TRANSMITTING
-	#IN OTHER WORDS, THIS IS A CONSTANT BIT RATE TRAFFIC, WHICH IS THE CASE FOR CPRI, NOT ECPRI, FOR eCPRI, CONSIDER UNCOMMENT THE LINE INSIDE THE IF STATEMENT 
-	#AND COMMENT THE FRAME GENERATION AFTER THE IF STATEMENT, 
-	#FOR TRADITIONAL CPRI, UNCOMMENT ALL FRAMES GENERATION, INSIDE AND OUTSIDE THE IF STATEMENT (IT WILL GENERATE WHATEVER RRHS RECEIVED FRAMES FROM UEs)
-	def uplinkTransmitCPRI(self):
-		frame_id = 0
-		while True:
-			yield self.env.timeout(self.cpriFrameGenerationTime)
-			print("{} generating eCPRI frame {} at {}".format(self.aId, frame_id, self.env.now))
-			activeUsers = []
-			if self.frames:
-				for i in self.frames:
-					activeUsers.append(i)
-					#activeUsers.append(i.src)
-				#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
-				eCPRIFrame = ecpriFrame(frame_id, None, self, "Cloud:0", activeUsers, None, None)
-				#generic path for tests purposes
-				eCPRIFrame.nextHop = ["Switch:0", "Cloud:0"]#here an algorithm will be invoked to calculate where to send the frame and which path to follow
-				#compute the downlink path, which is the same uplink path
-			else:
-				#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
-				eCPRIFrame = ecpriFrame(frame_id, None, self, "Cloud:0", activeUsers, None, None)
-				#generic path for tests purposes
-				eCPRIFrame.nextHop = ["Switch:0", "Cloud:0"]#here an algorithm will be invoked to calculate where to send the frame and which path to follow
-				#compute the downlink path, which is the same uplink path
-			frame_id += 1
-			#calculates the shortest path
-			length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
-			#remove the aId of this node from the path
-			eCPRIFrame.nextHop = path
-			eCPRIFrame.inversePath = list(eCPRIFrame.nextHop)
-			eCPRIFrame.inversePath.reverse()
-			eCPRIFrame.inversePath.pop(0)
-			#takes the next hop
-			eCPRIFrame.nextHop.pop(0)
-			#print("Path for {} is {}".format(self.aId, eCPRIFrame.nextHop))
-			#print("Inverse path is {}".format(eCPRIFrame.inversePath))
-			destiny = elements[eCPRIFrame.nextHop.pop(0)]
-			#print("Next hop is ", destiny.aId)
-			yield self.env.timeout(self.transmissionTime)
-			destiny.processingQueue.put(eCPRIFrame)
-			#print("Frame {} generated".format(eCPRIFrame.aId))
-'''
-	
-
-'''
-	#Esse é o método antigo que de fato mandava um quadro para cada UE
-	#this method downlink transmits frames to UEs
-	def downlinkTransmitUE(self):
-		while True:
-			print(psutil.virtual_memory())
-			#print("{} transmitting to its UEs".format(self.aId))
-			#received_frame = yield self.received_eCPRI_frames.get()
-			received_frame = yield self.processingQueue.get()
-			#send an ack to each UE within this received eCPRI frame
-			if self.users:
-				for i in received_frame.users:
-					yield self.env.timeout(self.localTransmissionTime)
-					i.ackFrames.put(received_frame)
-'''
+				#update the load on the buffer after processing the frame
+				self.currentLoad -= 1
+				del received_frame
+				#received_frame = None
+				frame_id += 1
 
 #basic network node to be extended
 class ActiveNode(metaclass=abc.ABCMeta):
