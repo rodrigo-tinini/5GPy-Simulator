@@ -68,13 +68,79 @@ class UserEquipment(object):
 		self.jitter = 0.0
 		self.lastLatency = 0.0
 		self.signalStrength = self.servingRRH.signalStrength
+		self.interRRHs = []
 
 	#this method verifies the RSSI of the signal of the UE and triggers the CoMP process if it is below the threshold (however, the processing of the CoMP set will be delegated to another method)
 	#when triggering the CoMP process, the UE will send its position
 	def checkInterference(self):
+		#check the position of the RRHs
+		self.signalStrength = self.checkPosition()
+		#print("UE {} is being interfered by {} RRHs".format(self.aId, len(self.interRRHs)))
 		if self.signalStrength < 5000:#an arbitrary value for the RSSI threshold
 			print("RRH {} Sending CSI to {}".format(self.aId, self.servingRRH.aId))
 			self.servingRRH.comp_notifications.put(self)
+
+	#this method verifies the position of the UE and set how much interference it is receiving/how many RRHs are interacting with it
+	def checkPosition(self):
+		#possible positions considering positive X and Y axis
+		if self.posX >= 50 and 0 <=self.posY <= 25:
+			print("Right")
+			#self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
+		elif self.posX >= 50 and 25 < self.posY <= 50:
+			print("Right and SupRight")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
+		elif self.posX >= 50 and 50 < self.posY:
+			print("Right and SupRight and Upside")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
+		elif 0 <= self.posX < 50 and 50 < self.posY:
+			print("Upside, and right and left sup")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
+		#possible positions considering positive X axis and negativa Y axis
+		elif self.posX >= 50 and 0 > self.posY >= - 25:
+			print("Right")
+			#self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
+		elif self.posX >= 50 and -25 > self.posY >= -50:
+			print("Right and InfRight")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
+		elif self.posX >= 50 and -50 > self.posY:
+			print("Right and InfRight and Downside")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
+		elif 0 <= self.posX < 50 and -50 > self.posY:
+			print("Downside, left and right inf")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
+		#possible possitions considering negative X axis and positive Y axis
+		elif self.posX <= -50 and 0 <= self.posY <= 25:
+			print("Left")
+			#self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
+		elif self.posX <= -50 and 25 < self.posY < 50:
+			print("Left and SupLeft")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
+		elif self.posX <= 50 and 50 < self.posY:
+			print("Left and SupLeft and Upside")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
+		elif 0 >= self.posX > -50 and 50 < self.posY:
+			print("Upside, SupLeft and SupRight")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
+		#possible possitions considering negative X and Y axis
+		elif self.posX <= -50 and 0 >= self.posY >= -25:
+			print("Left")
+			#self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
+		elif self.posX <= -50 and -25 > self.posY > -50:
+			print("Left and InfLeft")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
+		elif self.posX <= 50 and -50 > self.posY:
+			print("Leftm InfLeft and Downside")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
+		elif 0 >= self.posX > -50 and -50 > self.posY:
+			print("Downside and InfLeft and InfRight")
+			#self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
+		#now, calculate the RSSI of the UE considering how many RRHs are interfering in its signal
+		return self.calculateRSSI()
+
+	#this method calculates the RSSI of the signal
+	#TODO implement the calculation
+	def calculateRSSI(self):
+		return 10000
 
 	#TODO VOU MUDAR DE NOVO. OS UE NAO VAO GERAR QUADROS, APENAS ANDAR. O RRH AO GERAR O FRAME CPRI ASSUMIRÁ QUE RECEBEU UM QUADRO DE CADA UE
 	#O CALCULO DO JITTER E DA TRANSMISSÃO SERÁ FEITO EM CIMA DA POSIÇÃO EM QUE CADA UE SE ENCONTRAR QUANDO O RRH GERAR O FRAME CPRI E QUANDO DEVOLVER (HIPOTETICAMENTE) O QUADRO A CADA UE
@@ -83,9 +149,9 @@ class UserEquipment(object):
 		i = 0
 		while True:
 			#timeout for the UE to move
-			yield self.env.timeout(0.5)
+			yield self.env.timeout(0.05)
 			self.randomWalk()
-			#print("UE {} moved to position X = {} and Y = {}".format(hash(self), self.posX, self.posY))
+			print("UE {} moved to position X = {} and Y = {}".format(hash(self), self.posX, self.posY))
 			i += 1
 
 	#moves the UE
@@ -104,10 +170,17 @@ class UserEquipment(object):
 				self.posX = self.posX 
 				self.posY += 1
 		else:
-			if self.posX - 1 >= self.servingRRH.CoordinateY2:
+			if self.posY - 1 >= self.servingRRH.CoordinateY2:
 				self.posX = self.posX 
 				self.posY -= 1
+		#check the interference
+		self.checkInterference()
 
+#TODO: Implement the placement of the RRH processing considering the different eCPRI option
+#regarding this, the placement and RWA/RSA will need to be performed and specifically this part will be part of the study on eCPRI latencies and jitter
+#finally, after this is done, the CoMP processing will be incorporatedi
+#in this case, for CoMP, CoMP controllers will placed in locations that not necessarily is the same vBBU of the baseband processing of the RRH
+#regarding the placement of vBBUs for RRHs processing (not CoMP) we can think in naive politics (cloud first and then fog nodes, Fog first and then cloud, only fog nodes and cloud only for CoMP, or, only cloud and fog only for CoMP)
 #this class represents a generic RRH
 #it generates a bunch of UEs, receives/transmits baseband signals from/to them, generate eCPRI frames and send/receive them to/from processing
 class RRH(object):
@@ -156,7 +229,7 @@ class RRH(object):
 		while True:
 			yield self.env.timeout(self.distribution(self))
 			#a limit for the generation of UEs for testing purposes
-			if len(self.users) < 2:
+			if len(self.users) < 100:
 				ue = UserEquipment(self.env, i, self, "Messaging", self.localTransmissionTime)
 				self.users.append(ue)
 				#print("{} generated UE {} at {}".format(self.aId, hash(ue), self.env.now))
@@ -205,7 +278,10 @@ class RRH(object):
 			#waits for an UE to send a message informing that
 			comp_request = yield self.comp_notifications.get()
 			print("Processing CoMP for UE {}".format(comp_request.aId))
-			#verify the position of the UE and build the CoMP Set for it
+			#build the CoMP Set
+			#here, a naive algorithm will be performed, where all RRHs generating interference to the UE will be part of the CoMP Set
+			#other alternatives can also be proposed, especially to train a Machine Learning model
+			#after the CoMP Set is build, an algorithm will be executed to decide the placement of the CoMP Set on the processing nodes
 
 	#this method builds a eCPRI frame and uplink transmits it to a optical network element
 	#ESSE MÉTODO NÃO AGUARDA RECEBER QUADROS DOS USUÁRIOS, MAS QUANDO VAI GERAR O QUADRO CPRI, PEGA A POSIÇÃO DE CADA UE ATIVO PARA PODER CALCULAR A LATENCIA E O JITTER DE CADA UE BASEANDO-SE NA POSIÇÃO DELES
@@ -218,11 +294,11 @@ class RRH(object):
 		while True:
 			yield self.env.timeout(self.cpriFrameGenerationTime)
 			#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-			print(psutil.virtual_memory())
+			#print(psutil.virtual_memory())
 			#If traditional CPRI is used, create a frame with fixed bandwidth
 			#activeUsers = []
 			if self.cpriMode == "CPRI":
-				print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+				#print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
 				eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
 				generatedCPRI += 1
 			elif self.cpriMode == "eCPRI":
@@ -320,8 +396,8 @@ class ProcessingNode(ActiveNode):
 				#print("This is the path",request.nextHop)
 				#print("This is the inverse path", request.inversePath)
 				request.nextHop = request.inversePath
-			print("{} buffer load is {}".format(self.aId, self.currentLoad))
-			print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
+			#print("{} buffer load is {}".format(self.aId, self.currentLoad))
+			#print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
 			yield self.env.timeout(self.procTime)
 			#request.direction = "downlink"
 			#self.processingCapacity -= 1
@@ -333,8 +409,8 @@ class ProcessingNode(ActiveNode):
 	def sendRequest(self, request):
 		nextHop = request.nextHop.pop(0)#returns the id of the next hop
 		destiny = elements[nextHop]#retrieve the next hop object searching by its id
-		print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
-		print("{} buffer load is {}".format(self.aId, self.currentLoad))
+		#print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
+		#print("{} buffer load is {}".format(self.aId, self.currentLoad))
 		self.env.timeout(self.transmissionTime)
 		destiny.processingQueue.put(request)
 		#update the load on the buffer of the destiny node
@@ -364,9 +440,9 @@ class NetworkNode(ActiveNode):
 	def processRequest(self):
 		while True:
 			request = yield self.processingQueue.get()
-			print("{} buffer load is {}".format(self.aId, self.currentLoad))
+			#print("{} buffer load is {}".format(self.aId, self.currentLoad))
 			#print("Request {} arrived at {}".format(request.aId, self.aId))
-			print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
+			#print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
 			#yield self.env.timeout(self.switchTime)
 			#update the load on the buffer after processing the frame
 			self.currentLoad -= 1
@@ -377,7 +453,7 @@ class NetworkNode(ActiveNode):
 	def sendRequest(self, request):
 		nextHop = request.nextHop.pop(0)#returns the id of the next hop
 		destiny = elements[nextHop]#retrieve the next hop object searching by its id
-		print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
+		#print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
 		#self.env.timeout(self.transmissionTime)
 		destiny.processingQueue.put(request)
 		#update the load on the buffer of the destiny node
