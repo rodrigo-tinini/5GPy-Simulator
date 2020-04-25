@@ -85,55 +85,55 @@ class UserEquipment(object):
 		#possible positions considering positive X and Y axis
 		if self.posX >= 50 and 0 <=self.posY <= 25:
 			print("Right")
-			#self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
+			self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
 		elif self.posX >= 50 and 25 < self.posY <= 50:
 			print("Right and SupRight")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
 		elif self.posX >= 50 and 50 < self.posY:
 			print("Right and SupRight and Upside")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
 		elif 0 <= self.posX < 50 and 50 < self.posY:
 			print("Upside, and right and left sup")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
 		#possible positions considering positive X axis and negativa Y axis
 		elif self.posX >= 50 and 0 > self.posY >= - 25:
 			print("Right")
-			#self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
+			self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
 		elif self.posX >= 50 and -25 > self.posY >= -50:
 			print("Right and InfRight")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
 		elif self.posX >= 50 and -50 > self.posY:
 			print("Right and InfRight and Downside")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
 		elif 0 <= self.posX < 50 and -50 > self.posY:
 			print("Downside, left and right inf")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
 		#possible possitions considering negative X axis and positive Y axis
 		elif self.posX <= -50 and 0 <= self.posY <= 25:
 			print("Left")
-			#self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
+			self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
 		elif self.posX <= -50 and 25 < self.posY < 50:
 			print("Left and SupLeft")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
 		elif self.posX <= 50 and 50 < self.posY:
 			print("Left and SupLeft and Upside")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
 		elif 0 >= self.posX > -50 and 50 < self.posY:
 			print("Upside, SupLeft and SupRight")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
 		#possible possitions considering negative X and Y axis
 		elif self.posX <= -50 and 0 >= self.posY >= -25:
 			print("Left")
-			#self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
+			self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
 		elif self.posX <= -50 and -25 > self.posY > -50:
 			print("Left and InfLeft")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
 		elif self.posX <= 50 and -50 > self.posY:
 			print("Leftm InfLeft and Downside")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
 		elif 0 >= self.posX > -50 and -50 > self.posY:
 			print("Downside and InfLeft and InfRight")
-			#self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
+			self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
 		#now, calculate the RSSI of the UE considering how many RRHs are interfering in its signal
 		return self.calculateRSSI()
 
