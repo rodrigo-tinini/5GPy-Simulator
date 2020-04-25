@@ -138,3 +138,53 @@ def createSimulation(env, parameters):
 	for proc in procNodesParameters:
 		proc_node = network.ProcessingNode(env, proc["aId"], proc["aType"], float(proc["capacity"]), proc["qos"], frameProcTime, transmissionTime, G)
 		network.elements[proc_node.aId] = proc_node
+
+	#create the neighbors of each RRH
+	createNeighbors(parameters, network.elements)
+
+#create the neighbors of each base station
+def createNeighbors(parameters, elements):
+	neighbors = []
+	for n in parameters["Neighbors"]:
+		neighbors.append(n.attrib)
+	#get the neighborhood of each base station
+	for n in neighbors:
+		if n["RightRRH"] != None:
+			elements[n["src"]].adjacencies["RightRRH"] = n["RightRRH"]
+		else: 
+			elements[n["src"]].adjacencies["RightRRH"] = None 
+		if n["LeftRRH"] != None:
+			elements[n["src"]].adjacencies["LeftRRH"] = n["LeftRRH"]
+		else:
+			elements[n["src"]].adjacencies["LeftRRH"] = None
+		if n["RightSupDiagRRH"] != None:
+			elements[n["src"]].adjacencies["RightSupDiagRRH"] = n["RightSupDiagRRH"]
+		else:
+			elements[n["src"]].adjacencies["RightSupDiagRRH"] = None
+		if n["RightInfDiagRRH"] != None:
+			elements[n["src"]].adjacencies["RightInfDiagRRH"] = n["RightInfDiagRRH"]
+		else:
+			elements[n["src"]].adjacencies["RightInfDiagRRH"] = None
+		if n["LeftSupDiagRRH"] != None:
+			elements[n["src"]].adjacencies["LeftSupDiagRRH"] = n["LeftSupDiagRRH"]
+		else:
+			elements[n["src"]].adjacencies["LeftSupDiagRRH"] = None
+		if n["LeftInfDiagRRH"] != None:
+			elements[n["src"]].adjacencies["LeftInfDiagRRH"] = n["LeftInfDiagRRH"]
+		else:
+			elements[n["src"]].adjacencies["LeftInfDiagRRH"] = None
+		if n["UpSideRRH"] != None:
+			elements[n["src"]].adjacencies["UpSideRRH"] = n["UpSideRRH"]
+		else:
+			elements[n["src"]].adjacencies["UpSideRRH"] = None
+		if n["DownSideRRH"] != None:
+			elements[n["src"]].adjacencies["DownSideRRH"] = n["DownSideRRH"]
+		else:
+			elements[n["src"]].adjacencies["DownSideRRH"] = None
+
+#print the list of nighbors
+def printNeighbors(elements):
+	for i in elements:
+		if i.startswith("RRH"):
+			print("Neighbors of {} are:".format(i))
+			print(elements[i].adjacencies)
