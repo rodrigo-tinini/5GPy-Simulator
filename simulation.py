@@ -21,13 +21,18 @@ parameters = util.xmlParser('configurations.xml')
 #initiate the simulation parameters
 util.createSimulation(env, parameters)
 
+#print the neighbors of each base stations
+#util.printNeighbors(network.elements)
 
 #starts the simulation
 print("------------------------------------------------------------SIMULATION STARTED AT {}------------------------------------------------------------".format(env.now))
-util.startSimulation(env, 10)
+startMemory = psutil.virtual_memory().percent
+util.startSimulation(env, 1500)
+endMemory = psutil.virtual_memory().percent
 print("------------------------------------------------------------SIMULATION ENDED AT {}------------------------------------------------------------".format(env.now))
-print(psutil.virtual_memory())#print the memory consumption for testing
-#print("Total of CPRI basic frames: {}".format(network.generatedCPRI))
+#print(psutil.virtual_memory())#print the memory consumption for testing
+print("Start memory usage was {} and final memory usage was {}".format(startMemory, endMemory))
+print("Total of CPRI basic frames: {}".format(network.generatedCPRI))
 
 '''
 #Tests

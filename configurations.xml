@@ -23,6 +23,7 @@
         <CoordinateY1>100</CoordinateY1>
         <CoordinateY2>-100</CoordinateY2>
         <signalStrength>10000</signalStrength>
+        <wavelengthsAmount>4</wavelengthsAmount>
     </InputParameters>
 
 <!-- RRHs -->
@@ -45,6 +46,11 @@
         <Proc aId = "0" aType = "Cloud"  capacity = "10000" qos = "Standard" />
     </ProcessingNodes>
 
+<!-- Control plane nodes -->
+    <ControlPlane>
+        <CP aId = "0" aType = "ControlPlane" />
+    </ControlPlane>
+
 <!-- Connections to construct the directed graph -->
     <Edges>
         <Edge  source = "RRH:0" destiny = "Switch:0" weight = "5.5" />
@@ -55,6 +61,7 @@
         <Edge  source = "Switch:1" destiny = "Switch:2" weight = "3.4" />
         <Edge  source = "Switch:2" destiny = "Switch:0" weight = "7" />
         <Edge  source = "Switch:2" destiny = "Cloud:0" weight = "10" />
+        <Edge  source = "Switch:2" destiny = "ControlPlane:0" weight = "10" />
     </Edges>>
 
 <!-- Neightbors of each RRH -->

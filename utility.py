@@ -76,6 +76,7 @@ def createSimulation(env, parameters):
 	CoordinateY1 = int(parameters["InputParameters"].find("CoordinateY1").text)
 	CoordinateY2 = int(parameters["InputParameters"].find("CoordinateY2").text)
 	signalStrength = (parameters["InputParameters"].find("signalStrength").text)
+	network.wavelengthsAmount = int(parameters["InputParameters"].find("wavelengthsAmount").text)
 
 	#keep the input parameters for visualization or control purposes
 	inputParameters = []
@@ -97,6 +98,11 @@ def createSimulation(env, parameters):
 	for proc in parameters["ProcessingNodes"]:
 		procNodesParameters.append(proc.attrib)
 
+	controlPlaneParameters = []
+	#get the attributes of each control plane node to be created
+	for cp in parameters["ControlPlane"]:
+		controlPlaneParameters.append(cp.attrib)
+
 	#get the edges for the graph representation
 	networkEdges = []
 	for e in parameters["Edges"]:
@@ -112,7 +118,10 @@ def createSimulation(env, parameters):
 		vertex.append(node["aType"]+":"+str(node["aId"]))
 	#Processing nodes
 	for proc in procNodesParameters:
-		vertex.append(proc["aType"]+":"+str(node["aId"]))
+		vertex.append(proc["aType"]+":"+str(proc["aId"]))
+	#Control plane node(s)
+	for cp in controlPlaneParameters:
+		vertex.append(cp["aType"]+":"+str(cp["aId"]))
 
 	#create the graph
 	G = nx.Graph()
@@ -123,10 +132,16 @@ def createSimulation(env, parameters):
 	for edge in networkEdges:
 		G.add_edge(edge["source"], edge["destiny"], weight= float(edge["weight"]))
 
+	# create the control plane node(s)
+	for cp in controlPlaneParameters:
+		cp_node = network.ControlPlane(env, cp["aId"], cp["aType"])
+		network.elements[cp_node.aId] = cp_node
+
 	#create the elements
 	#create the RRHs
 	for r in rrhsParameters:
-		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, G, cpriMode, CoordinateX1, CoordinateX2, CoordinateY1, CoordinateY2, signalStrength)
+		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, G, cpriMode, CoordinateX1,
+						  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"])
 		network.elements[rrh.aId] = rrh
 
 	#create the network nodes
