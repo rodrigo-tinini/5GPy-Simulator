@@ -11,7 +11,11 @@ import numpy
 import utility as util
 from scipy.stats import norm
 import psutil
+from functools import reduce
 
+#some network parameters
+#amount of available wavelengths
+wavelengthsAmount = None
 
 #This is the network module. It keeps all network elements, such as, processing nodes, RRHs, network nodes
 
@@ -30,6 +34,8 @@ class Frame(object):
 		self.nextHop = []
 		self.inversePath = []#return path
 		self.aType = None
+		self.content = None
+		self.control = False
 		#self.localTransmissionTime = localTransmissionTime
 		#self.procTime = procTime
 		#self.switchTime = switchTime
@@ -84,55 +90,55 @@ class UserEquipment(object):
 	def checkPosition(self):
 		#possible positions considering positive X and Y axis
 		if self.posX >= 50 and 0 <=self.posY <= 25:
-			print("Right")
+			#print("Right")
 			self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
 		elif self.posX >= 50 and 25 < self.posY <= 50:
-			print("Right and SupRight")
+			#print("Right and SupRight")
 			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
 		elif self.posX >= 50 and 50 < self.posY:
-			print("Right and SupRight and Upside")
+			#print("Right and SupRight and Upside")
 			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
 		elif 0 <= self.posX < 50 and 50 < self.posY:
-			print("Upside, and right and left sup")
+			#print("Upside, and right and left sup")
 			self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
 		#possible positions considering positive X axis and negativa Y axis
 		elif self.posX >= 50 and 0 > self.posY >= - 25:
-			print("Right")
+			#print("Right")
 			self.interRRHs.append(self.servingRRH.adjacencies["RightRRH"])
 		elif self.posX >= 50 and -25 > self.posY >= -50:
-			print("Right and InfRight")
+			#print("Right and InfRight")
 			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
 		elif self.posX >= 50 and -50 > self.posY:
-			print("Right and InfRight and Downside")
+			#print("Right and InfRight and Downside")
 			self.interRRHs.extend((self.servingRRH.adjacencies["RightRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
 		elif 0 <= self.posX < 50 and -50 > self.posY:
-			print("Downside, left and right inf")
+			#print("Downside, left and right inf")
 			self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
 		#possible possitions considering negative X axis and positive Y axis
 		elif self.posX <= -50 and 0 <= self.posY <= 25:
-			print("Left")
+			#print("Left")
 			self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
 		elif self.posX <= -50 and 25 < self.posY < 50:
-			print("Left and SupLeft")
+			#print("Left and SupLeft")
 			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"]))
 		elif self.posX <= 50 and 50 < self.posY:
-			print("Left and SupLeft and Upside")
+			#print("Left and SupLeft and Upside")
 			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["UpSideRRH"]))
 		elif 0 >= self.posX > -50 and 50 < self.posY:
-			print("Upside, SupLeft and SupRight")
+			#print("Upside, SupLeft and SupRight")
 			self.interRRHs.extend((self.servingRRH.adjacencies["UpSideRRH"], self.servingRRH.adjacencies["LeftSupDiagRRH"], self.servingRRH.adjacencies["RightSupDiagRRH"]))
 		#possible possitions considering negative X and Y axis
 		elif self.posX <= -50 and 0 >= self.posY >= -25:
-			print("Left")
+			#print("Left")
 			self.interRRHs.append(self.servingRRH.adjacencies["LeftRRH"])
 		elif self.posX <= -50 and -25 > self.posY > -50:
-			print("Left and InfLeft")
+			#print("Left and InfLeft")
 			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"]))
 		elif self.posX <= 50 and -50 > self.posY:
-			print("Leftm InfLeft and Downside")
+			#print("Leftm InfLeft and Downside")
 			self.interRRHs.extend((self.servingRRH.adjacencies["LeftRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["DownSideRRH"]))
 		elif 0 >= self.posX > -50 and -50 > self.posY:
-			print("Downside and InfLeft and InfRight")
+			#print("Downside and InfLeft and InfRight")
 			self.interRRHs.extend((self.servingRRH.adjacencies["DownSideRRH"], self.servingRRH.adjacencies["LeftInfDiagRRH"], self.servingRRH.adjacencies["RightInfDiagRRH"]))
 		#now, calculate the RSSI of the UE considering how many RRHs are interfering in its signal
 		return self.calculateRSSI()
@@ -151,7 +157,7 @@ class UserEquipment(object):
 			#timeout for the UE to move
 			yield self.env.timeout(0.05)
 			self.randomWalk()
-			print("UE {} moved to position X = {} and Y = {}".format(hash(self), self.posX, self.posY))
+			print("UE {} moved to position X = {} and Y = {} at {}".format(hash(self), self.posX, self.posY, self.env.now))
 			i += 1
 
 	#moves the UE
@@ -184,7 +190,7 @@ class UserEquipment(object):
 #this class represents a generic RRH
 #it generates a bunch of UEs, receives/transmits baseband signals from/to them, generate eCPRI frames and send/receive them to/from processing
 class RRH(object):
-	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode, x1, x2, y1, y2, signalStrength):
+	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode, x1, x2, y1, y2, signalStrength, controlPlane):
 		self.env = env
 		self.nextNode = None
 		self.aType = "RRH"
@@ -222,6 +228,31 @@ class RRH(object):
 		#adjacent RRHs. each range of coordinates of the RRH will have a list of adjacent RRHs
 		self.adjacencies = {}#each key is a range of coordinates expressed as a tuple, for instance, {("x1")}
 		self.signalStrength = signalStrength
+		self.path = None#the path to be calculated between source and destiny
+		self.length = None#the length of the path used by this RRH
+		self.controlMessages = simpy.Store(self.env)#keep control messages
+		self.allocatedWavelength = None#the wavelength used by this RRH to transmit traffic
+		self.controlPlane = controlPlane
+
+	#send a message/frame to its connected switch
+	def sendRequest(self, request):
+		#print("sending control message")
+		request.nextHop = copy.copy(self.path)
+		request.path = copy.copy(self.path)
+		request.path.pop(0)
+		request.inversePath = list(request.nextHop)
+		request.inversePath.reverse()
+		request.inversePath.pop(0)
+		# takes the next hop
+		request.nextHop.pop(0)
+		# print("Path for {} is {}".format(self.aId, eCPRIFrame.nextHop))
+		# print("Inverse path is {}".format(eCPRIFrame.inversePath))
+		destiny = elements[request.nextHop.pop(0)]
+		#print("DESTINY is {}".format(destiny.aId))
+		# print("{} transmitting to {}".format(self.aId, destiny.aId))
+		# yield self.env.timeout(self.transmissionTime)
+		destiny.processingQueue.put(request)
+		destiny.currentLoad += 1
 
 	#this method generates users equipments
 	def run(self):
@@ -234,6 +265,20 @@ class RRH(object):
 				self.users.append(ue)
 				#print("{} generated UE {} at {}".format(self.aId, hash(ue), self.env.now))
 				i += 1
+
+	#request the lightpath from the control plane
+	def requestLightpath(self):
+		path_copy = copy.copy(self.path)
+		#remove the own RRH and the processing node from the path (as the dijkstra returns them) to keep only the intermediate nodes
+		path_copy.pop()
+		path_copy.pop(0)
+		wavelength = self.controlPlane.allocateWavelength(path_copy)
+		#check if a lambda was found
+		if wavelength != -1:
+			self.allocatedWavelength = wavelength
+		# if no, send back an error message
+		else:
+			print("Lightpath failed")
 
 	#every time a frame is received from a UE, keep it to generate the eCPRI frame later
 	def takeFrameUE(self):
@@ -283,6 +328,10 @@ class RRH(object):
 			#other alternatives can also be proposed, especially to train a Machine Learning model
 			#after the CoMP Set is build, an algorithm will be executed to decide the placement of the CoMP Set on the processing nodes
 
+	#this method calculates the path from source to destiny using Dijkstra
+	def shorstestPath(self, destiny):# For now, cloud is the default destiny
+		self.length, self.path = nx.single_source_dijkstra(self.graph, self.aId, destiny)
+
 	#this method builds a eCPRI frame and uplink transmits it to a optical network element
 	#ESSE MÉTODO NÃO AGUARDA RECEBER QUADROS DOS USUÁRIOS, MAS QUANDO VAI GERAR O QUADRO CPRI, PEGA A POSIÇÃO DE CADA UE ATIVO PARA PODER CALCULAR A LATENCIA E O JITTER DE CADA UE BASEANDO-SE NA POSIÇÃO DELES
 	#EM RELAÇÃO A CARGA DO FRAME eCPRI, A QUANTIDADE DE USUÁRIOS ATIVOS IRÁ INFLUENCIAR. NO CASO DO CPRI NORMAL, INDEPENDENTE DA QUANTIDADE DE UEs ATIVOS, A CARGA DO FRAME VAI SER SEMPRE A MESMA
@@ -290,39 +339,31 @@ class RRH(object):
 	def uplinkTransmitCPRI(self):
 		global generatedCPRI
 		frame_id = 1
-		length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
+		self.length, self.path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
+		#self.length, self.path = self.shorstestPath("Cloud:0")
 		while True:
-			yield self.env.timeout(self.cpriFrameGenerationTime)
-			#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-			#print(psutil.virtual_memory())
-			#If traditional CPRI is used, create a frame with fixed bandwidth
-			#activeUsers = []
-			if self.cpriMode == "CPRI":
-				#print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-				eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
-				generatedCPRI += 1
-			elif self.cpriMode == "eCPRI":
+			if self.allocatedWavelength != None:
+				yield self.env.timeout(self.cpriFrameGenerationTime)
 				print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-				eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
-			#calculates the shortest path
-			#length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
-			#remove the aId of this node from the path
-			eCPRIFrame.nextHop = copy.copy(path)
-			eCPRIFrame.inversePath = list(eCPRIFrame.nextHop)
-			eCPRIFrame.inversePath.reverse()
-			eCPRIFrame.inversePath.pop(0)
-			#takes the next hop
-			eCPRIFrame.nextHop.pop(0)
-			#print("Path for {} is {}".format(self.aId, eCPRIFrame.nextHop))
-			#print("Inverse path is {}".format(eCPRIFrame.inversePath))
-			destiny = elements[eCPRIFrame.nextHop.pop(0)]
-			#print("{} transmitting to {}".format(self.aId, destiny.aId))
-			#yield self.env.timeout(self.transmissionTime)
-			destiny.processingQueue.put(eCPRIFrame)
-			#update the load on the buffer of the destiny node
-			destiny.currentLoad += 1
-			#print("Frame {} generated".format(eCPRIFrame.aId))
-			frame_id += 1
+				#print(psutil.virtual_memory())
+				#If traditional CPRI is used, create a frame with fixed bandwidth
+				#activeUsers = []
+				if self.cpriMode == "CPRI":
+					#print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+					eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
+					generatedCPRI += 1
+				elif self.cpriMode == "eCPRI":
+					print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+					eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
+				#calculates the shortest path
+				#length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
+				#send the request to the next connected network element
+				self.sendRequest(eCPRIFrame)
+				frame_id += 1
+			else:
+				self.requestLightpath()
+
+
 
 	#This method hipothetically sends an ACK to each UE. The ACK message is modeled as an update on the received time attribute of each UE.
 	#The received time is update as a function of the time to send a frame to each UE regarding the distance of each UE from the RRH
@@ -392,14 +433,11 @@ class ProcessingNode(ActiveNode):
 		while True:
 			request = yield self.processingQueue.get()
 			if self.aId == request.dst:#this is the destiny node. Process it and compute the downlink path
-				#rint("Request {} arrived at destination {}".format(request.aId, self.aId))
-				#print("This is the path",request.nextHop)
-				#print("This is the inverse path", request.inversePath)
+				#print("Request {} arrived at destination {}".format(request.aId, self.aId))
 				request.nextHop = request.inversePath
 			#print("{} buffer load is {}".format(self.aId, self.currentLoad))
 			#print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
 			yield self.env.timeout(self.procTime)
-			#request.direction = "downlink"
 			#self.processingCapacity -= 1
 			#update the load on the buffer after processing the frame
 			self.currentLoad -= 1
@@ -435,6 +473,10 @@ class NetworkNode(ActiveNode):
 		self.switchTime = switchTime
 		self.transmissionTime = transmissionTime
 		self.graph = graph
+		self.lambdasList = []
+		# initiate the list of available wavelengths
+		for i in range(wavelengthsAmount):
+			self.lambdasList.append(i)
 
 	#process a request
 	def processRequest(self):
@@ -455,27 +497,92 @@ class NetworkNode(ActiveNode):
 		destiny = elements[nextHop]#retrieve the next hop object searching by its id
 		#print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
 		#self.env.timeout(self.transmissionTime)
+		if request.control and destiny == request.src:
+			destiny.controlMessages.put(request)
 		destiny.processingQueue.put(request)
 		#update the load on the buffer of the destiny node
 		destiny.currentLoad += 1
-	'''
-	def sendRequest(self, request):
-		if request.direction == "uplink":
-			destiny = self.nextNode
-		else:
-			destiny = self.lastNode
-		#destiny = req.nextHop.pop()
-		print("{} sending request {} to {} {}".format(self.aId, request.aId, destiny.aType, destiny.aId))
-		self.env.timeout(transmissionTime)
-		destiny.processingQueue.put(request)
-	'''
 
 #this class represents the control plane that will be responsible to invoke algorithms to place vBBUs and to assign wavelengths
+#it inherits the active node because it will process messages and send them back to the message's source
 #it will keep the representations of the topology that will be used by the algorithms, e.g., graph or ILP
 #in the case of the ILP, it is necessary that every object created is represented as binary arrays for the ILP to solve it, as we did before
-class ControlPlane(object):
-	pass
-'''
+class ControlPlane(ActiveNode):
+	def __init__(self, env, aId, aType):
+		super().__init__(env, aId, aType, None)
+
+	#process a control message according to its content
+	def processRequest(self):
+		while True:
+			message = yield self.processingQueue.get()
+			print("goototototot")
+			#process the message according to its content
+			if message.aType == "Lightpath_Request":#request for a wavelength on a path
+				print("Receiving request")
+				wavelength = self.allocateWavelength(message.path)
+				#check if a lambda was found
+				if wavelength:
+				#send the confirmation to the source with the allocated wavelength
+					message.aType == "Lightpath Success"#TODO implement a list to keep all established lightpaths
+					message.content = wavelength
+				#if no, send back an error message
+				else:
+					message.aType = "Lightpath Failed"
+				message.nextHop = message.inversePath
+				self.sendRequest(message)
+			if message.aType == "Lightpath_Down":
+				#terminate the lightpath releasing the wavelength
+				wavelength = message.content#the content of the message must be the wavelength id
+				for i in path:
+					i.lambdasList.append(wavelength)
+				print("Lightpath was turned down")
+
+	# transmit a request to its destiny
+	def sendRequest(self, request):
+		nextHop = request.nextHop.pop(0)  # returns the id of the next hop
+		destiny = elements[nextHop]  # retrieve the next hop object searching by its id
+		# print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
+		# print("{} buffer load is {}".format(self.aId, self.currentLoad))
+		self.env.timeout(self.transmissionTime)
+		destiny.processingQueue.put(request)
+		# update the load on the buffer of the destiny node
+		destiny.currentLoad += 1
+
+	#this method returns a wavelength available in a path of network nodes
+	def getPath(self, path):
+		#create a list of the lists of available wavelengths
+		lambdas = []
+		#print("Path is",path)
+		for i in path:
+			lambdas.append(elements[i].lambdasList)
+		#print("***************")
+		#print(lambdas)
+		#print("$$$$$$$$$$$$$$$")
+		#get the first common wavelength for network nodes in the path
+		res = list(reduce(lambda i, j: i & j, (set(x) for x in lambdas)))
+		print("Path",path)
+		print(res)
+		return res
+
+	#this method allocates the wavelength for a path
+	def allocateWavelength(self, path):
+		for i in elements:
+			if isinstance(elements[i], RRH):
+				print("Node {} has {} wavelengths".format(elements[i].aId, elements[i].allocatedWavelength))
+		#gets the wavelength
+		res =  self.getPath(path)
+		print("res",res)
+		if res:
+			wavelength = res.pop()
+			#pop the wavelength from each network node in path
+			for i in path:
+				elements[i].lambdasList.remove(wavelength)
+			return wavelength
+		else:
+			print("No available wavelength - path blocked")
+			exit()
+			return -1
+'''	
 def sendRequest(self, request):
 	print("{} sending request {} to {} {}".format(self.aId, request.aId, destiny.aType, destiny.aId))
 	nextHop = request.nextHop.pop()
