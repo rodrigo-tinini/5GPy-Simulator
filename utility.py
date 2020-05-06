@@ -140,14 +140,19 @@ def createSimulation(env, parameters):
 	#create the elements
 	#create the RRHs
 	for r in rrhsParameters:
+		fog_node = None
+		if r["fogNode"] != "None":
+			fog_node = r["fogNode"]
 		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, G, cpriMode, CoordinateX1,
-						  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"])
+						  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node)
 		network.elements[rrh.aId] = rrh
 
 	#create the network nodes
 	for node in netNodesParameters:
 		net_node = network.NetworkNode(env, node["aId"], node["aType"], float(node["capacity"]), node["qos"], switchTime, transmissionTime, G)
 		network.elements[net_node.aId] = net_node
+		if net_node.aType != "Cloud":
+			network.fogNodes.append(net_node)
 
 	#create the processing nodes
 	for proc in procNodesParameters:

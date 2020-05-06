@@ -28,10 +28,10 @@
 
 <!-- RRHs -->
     <RRHs>
-        <RRH aId = "0" />
-        <RRH aId = "1" />
-        <RRH aId = "2" />
-        <RRH aId = "3" />
+        <RRH aId = "0" fogNode = "None" />
+        <RRH aId = "1" fogNode = "None"/>
+        <RRH aId = "2" fogNode = "None"/>
+        <RRH aId = "3" fogNode = "None"/>
     </RRHs>
 
 <!-- Network nodes -->
@@ -43,7 +43,7 @@
 
 <!-- Processing nodes -->
     <ProcessingNodes>
-        <Proc aId = "0" aType = "Cloud"  capacity = "10000" qos = "Standard" />
+        <Proc aId = "0" aType = "Cloud"  capacity = "100" qos = "Standard" />
     </ProcessingNodes>
 
 <!-- Control plane nodes -->
