@@ -1,3 +1,4 @@
+#This is the network module. It keeps all network elements, such as, processing nodes, RRHs, network nodes
 import copy
 import sys
 import abc
@@ -12,15 +13,16 @@ import utility as util
 from scipy.stats import norm
 import psutil
 from functools import reduce
+import algorithms
 
-#some network parameters
+#some network parameters and useful variables
 #amount of available wavelengths
 wavelengthsAmount = None
-
-#This is the network module. It keeps all network elements, such as, processing nodes, RRHs, network nodes
-
 #this dictionaire keeps all created network objects
 elements = {}
+#list to keeps all fog nodes
+fogNodes = []
+#amount of generated CPRI/eCPRI frames
 generatedCPRI = 0
 
 #this class represents a general frame
@@ -83,7 +85,7 @@ class UserEquipment(object):
 		self.signalStrength = self.checkPosition()
 		#print("UE {} is being interfered by {} RRHs".format(self.aId, len(self.interRRHs)))
 		if self.signalStrength < 5000:#an arbitrary value for the RSSI threshold
-			print("RRH {} Sending CSI to {}".format(self.aId, self.servingRRH.aId))
+			#print("RRH {} Sending CSI to {}".format(self.aId, self.servingRRH.aId))
 			self.servingRRH.comp_notifications.put(self)
 
 	#this method verifies the position of the UE and set how much interference it is receiving/how many RRHs are interacting with it
@@ -157,7 +159,7 @@ class UserEquipment(object):
 			#timeout for the UE to move
 			yield self.env.timeout(0.05)
 			self.randomWalk()
-			print("UE {} moved to position X = {} and Y = {} at {}".format(hash(self), self.posX, self.posY, self.env.now))
+			#print("UE {} moved to position X = {} and Y = {} at {}".format(hash(self), self.posX, self.posY, self.env.now))
 			i += 1
 
 	#moves the UE
@@ -190,14 +192,15 @@ class UserEquipment(object):
 #this class represents a generic RRH
 #it generates a bunch of UEs, receives/transmits baseband signals from/to them, generate eCPRI frames and send/receive them to/from processing
 class RRH(object):
-	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode, x1, x2, y1, y2, signalStrength, controlPlane):
+	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode,
+				 x1, x2, y1, y2, signalStrength, controlPlane, fogNode):
 		self.env = env
 		self.nextNode = None
 		self.aType = "RRH"
 		self.aId = "RRH"+":"+str(aId)
 		self.frames = []
 		self.users = []#list of active UEs served by this RRH
-		self.nodes_connection = []#binary array that keeps the connection fron this RRH to fog nodes and cloud node(s)
+		self.nodes_connection = []#binary array that keeps the connection from this RRH to fog nodes and cloud node(s)
 		self.distribution = distribution#the distribution for the traffic generator distribution
 		self.trafficGen = self.env.process(self.run())#initiate the built-in traffic generator
 		#self.genFrame = self.env.process(self.takeFrameUE())
@@ -233,6 +236,9 @@ class RRH(object):
 		self.controlMessages = simpy.Store(self.env)#keep control messages
 		self.allocatedWavelength = None#the wavelength used by this RRH to transmit traffic
 		self.controlPlane = controlPlane
+		self.fogNode = fogNode#the serving fog node of this RRH (for instance, the closer RRH)
+		self.processingNode = None#the processing node that hosts the RRH's vBBU
+		self.procDemand = 0
 
 	#send a message/frame to its connected switch
 	def sendRequest(self, request):
@@ -332,6 +338,15 @@ class RRH(object):
 	def shorstestPath(self, destiny):# For now, cloud is the default destiny
 		self.length, self.path = nx.single_source_dijkstra(self.graph, self.aId, destiny)
 
+	#calls the placement algorithm
+	def findProcessingNode(self):
+		node = None
+		node = algorithms.cloudPlacement(elements["Cloud:0"], self)
+		if node != None:
+			return True
+		else:
+			return False
+
 	#this method builds a eCPRI frame and uplink transmits it to a optical network element
 	#ESSE MÉTODO NÃO AGUARDA RECEBER QUADROS DOS USUÁRIOS, MAS QUANDO VAI GERAR O QUADRO CPRI, PEGA A POSIÇÃO DE CADA UE ATIVO PARA PODER CALCULAR A LATENCIA E O JITTER DE CADA UE BASEANDO-SE NA POSIÇÃO DELES
 	#EM RELAÇÃO A CARGA DO FRAME eCPRI, A QUANTIDADE DE USUÁRIOS ATIVOS IRÁ INFLUENCIAR. NO CASO DO CPRI NORMAL, INDEPENDENTE DA QUANTIDADE DE UEs ATIVOS, A CARGA DO FRAME VAI SER SEMPRE A MESMA
@@ -342,26 +357,29 @@ class RRH(object):
 		self.length, self.path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
 		#self.length, self.path = self.shorstestPath("Cloud:0")
 		while True:
-			if self.allocatedWavelength != None:
-				yield self.env.timeout(self.cpriFrameGenerationTime)
-				print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-				#print(psutil.virtual_memory())
-				#If traditional CPRI is used, create a frame with fixed bandwidth
-				#activeUsers = []
-				if self.cpriMode == "CPRI":
-					#print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-					eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
-					generatedCPRI += 1
-				elif self.cpriMode == "eCPRI":
-					print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-					eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
-				#calculates the shortest path
-				#length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
-				#send the request to the next connected network element
-				self.sendRequest(eCPRIFrame)
-				frame_id += 1
+			if self.processingNode == None:
+				if self.findProcessingNode():
+					print("{} allocated at {}".format(self.aId, self.processingNode.aId))
+				else:
+					print("vBBU from {} was not allocated".format(self.aId))
 			else:
-				self.requestLightpath()
+				if self.allocatedWavelength != None:
+					yield self.env.timeout(self.cpriFrameGenerationTime)
+					#If traditional CPRI is used, create a frame with fixed bandwidth
+					#activeUsers = []
+					if self.cpriMode == "CPRI":
+						print(psutil.virtual_memory().percent)
+						print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+						eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
+						generatedCPRI += 1
+					elif self.cpriMode == "eCPRI":
+						#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+						eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
+					#send the request to the next connected network element
+					self.sendRequest(eCPRIFrame)
+					frame_id += 1
+				else:
+					self.requestLightpath()
 
 
 
@@ -374,7 +392,7 @@ class RRH(object):
 		while True:
 			#print(psutil.virtual_memory())
 			received_frame = yield self.processingQueue.get()
-			print("{} transmitting to its UEs".format(self.aId))
+			#print("{} transmitting to its UEs".format(self.aId))
 			if received_frame.users:
 				for i in received_frame.users:
 					yield self.env.timeout(self.localTransmissionTime)
@@ -401,6 +419,7 @@ class ActiveNode(metaclass=abc.ABCMeta):
 		self.nextNode = None
 		self.lastNode = None
 		self.toProcess = self.env.process(self.processRequest())
+		self.procQueue = []
 
 	#process each frame
 	@abc.abstractmethod
@@ -427,7 +446,7 @@ class ProcessingNode(ActiveNode):
 		self.procTime = procTime
 		self.transmissionTime = transmissionTime
 		self.graph = graph
-
+		self.vBBUs = {}#keeps the RRHs being processed. Key: RRH.aId, value: processing being consumed by each RRH
 	#process a request
 	def processRequest(self):
 		while True:
@@ -515,7 +534,6 @@ class ControlPlane(ActiveNode):
 	def processRequest(self):
 		while True:
 			message = yield self.processingQueue.get()
-			print("goototototot")
 			#process the message according to its content
 			if message.aType == "Lightpath_Request":#request for a wavelength on a path
 				print("Receiving request")
@@ -555,23 +573,14 @@ class ControlPlane(ActiveNode):
 		#print("Path is",path)
 		for i in path:
 			lambdas.append(elements[i].lambdasList)
-		#print("***************")
-		#print(lambdas)
-		#print("$$$$$$$$$$$$$$$")
 		#get the first common wavelength for network nodes in the path
 		res = list(reduce(lambda i, j: i & j, (set(x) for x in lambdas)))
-		print("Path",path)
-		print(res)
 		return res
 
 	#this method allocates the wavelength for a path
 	def allocateWavelength(self, path):
-		for i in elements:
-			if isinstance(elements[i], RRH):
-				print("Node {} has {} wavelengths".format(elements[i].aId, elements[i].allocatedWavelength))
 		#gets the wavelength
 		res =  self.getPath(path)
-		print("res",res)
 		if res:
 			wavelength = res.pop()
 			#pop the wavelength from each network node in path
