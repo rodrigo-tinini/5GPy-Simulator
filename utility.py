@@ -60,6 +60,7 @@ def createSimulation(env, parameters):
 	cpriFrameGenerationTime = float(parameters["InputParameters"].find("cpriFrameGenerationTime").text)
 	distributionAverage = float(parameters["InputParameters"].find("distributionAverage").text)
 	cpriMode = parameters["InputParameters"].find("cpriMode").text
+	eCpriEncap = parameters["InputParameters"].find("eCpriEncap").text
 	distribution = lambda x: np.expovariate(1000)
 	limitAxisY = int(parameters["InputParameters"].find("limitAxisY").text)#limit of axis Y of the network topology on a cartesian plane
 	limitAxisX = int(parameters["InputParameters"].find("limitAxisX").text)#limit of axis X of the network topology on a cartesian plane
@@ -134,13 +135,23 @@ def createSimulation(env, parameters):
 
 	#create the elements
 	#create the RRHs
-	for r in rrhsParameters:
-		fog_node = None
-		if r["fogNode"] != "None":
-			fog_node = r["fogNode"]
-		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, cpriMode, CoordinateX1,
-						  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node)
-		network.elements[rrh.aId] = rrh
+	if cpriMode == "CPRI":
+		for r in rrhsParameters:
+			fog_node = None
+			if r["fogNode"] != "None":
+				fog_node = r["fogNode"]
+			rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, cpriMode, CoordinateX1,
+							  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node)
+			network.elements[rrh.aId] = rrh
+	elif cpriMode == "eCPRI":
+		for r in rrhsParameters:
+			fog_node = None
+			if r["fogNode"] != "None":
+				fog_node = r["fogNode"]
+			rrh = network.eRRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime,
+							   cpriMode, eCpriEncap, CoordinateX1, CoordinateX2, CoordinateY1, CoordinateY2, signalStrength,
+							   network.elements["ControlPlane:0"], fog_node)
+			network.elements[rrh.aId] = rrh
 
 	#create the network nodes
 	for node in netNodesParameters:

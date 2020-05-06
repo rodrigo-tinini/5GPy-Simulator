@@ -11,7 +11,8 @@
         <localTransmissionTime>0.0000001</localTransmissionTime>
         <cpriFrameGenerationTime>0.001</cpriFrameGenerationTime>
         <distributionAverage>1000</distributionAverage>
-        <cpriMode>CPRI</cpriMode>
+        <cpriMode>eCPRI</cpriMode>
+        <eCpriEncap>IP</eCpriEncap>
         <!-- Limits of the cartesian plane representing all the base stations topology -->
         <limitAxisY>2</limitAxisY>
         <limitAxisX>2</limitAxisX>
