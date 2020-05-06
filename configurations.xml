@@ -24,6 +24,7 @@
         <CoordinateY2>-100</CoordinateY2>
         <signalStrength>10000</signalStrength>
         <wavelengthsAmount>4</wavelengthsAmount>
+        <Algorithm>cloudPlacement</Algorithm>
     </InputParameters>
 
 <!-- RRHs -->

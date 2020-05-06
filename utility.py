@@ -19,30 +19,24 @@ def xmlParser(xmlFile):
 	return parameters
 
 #call Dijkstra shortest path algorithm
-def dijkstraShortestpath(G, source, destiny):
+def dijkstraShortestPath(G, source, destiny):
 	length, path = nx.single_source_dijkstra(G, source, destiny)
 	return length, path
 
-#create the limits of each base station/RRH following a cartesian plane
+#create the limits of each base station/RRH following a cartesian plane - obsolete, not being used
 def createNetworkLimits(limitX, limitY, stepX, stepY, elements):
-	#dictionaire to keep all coordinates of a base station
-	#coordinates = {}
 	#to place each base station in a dictionaire position
 	i = 0
 	#until the limit of axis x, go upside until the limite of axis y
 	x = 0
 	while x < limitX:
-		#print("X equal to {}".format(x))
 		y = 0
 		while y < limitY:
-			#coordinates["RRH:{}".format(i)] = [(x, y), (x, y+1), (x+1, y), (x+1, y+1)]#old implementation
 			elements["RRH:{}".format(i)].x1 = x
 			elements["RRH:{}".format(i)].y1 = y
 			elements["RRH:{}".format(i)].x2 = x + 1
 			elements["RRH:{}".format(i)].y2 = y + 1
-			#print("Coordinates: x1 y1 {}, x1 y 2 {}, x2 y1 {}, x2 y2 {}".format((x, y), (x, y+1), (x+1, y), (x+1, y+1)))
 			y += stepY
-			#y += 1
 			i += 1
 		x += stepX
 
@@ -77,6 +71,7 @@ def createSimulation(env, parameters):
 	CoordinateY2 = int(parameters["InputParameters"].find("CoordinateY2").text)
 	signalStrength = (parameters["InputParameters"].find("signalStrength").text)
 	network.wavelengthsAmount = int(parameters["InputParameters"].find("wavelengthsAmount").text)
+	network.chosenAlgorithm = (parameters["InputParameters"].find("Algorithm").text)
 
 	#keep the input parameters for visualization or control purposes
 	inputParameters = []
@@ -134,7 +129,7 @@ def createSimulation(env, parameters):
 
 	# create the control plane node(s)
 	for cp in controlPlaneParameters:
-		cp_node = network.ControlPlane(env, cp["aId"], cp["aType"])
+		cp_node = network.ControlPlane(env, cp["aId"], cp["aType"], G)
 		network.elements[cp_node.aId] = cp_node
 
 	#create the elements
@@ -143,7 +138,7 @@ def createSimulation(env, parameters):
 		fog_node = None
 		if r["fogNode"] != "None":
 			fog_node = r["fogNode"]
-		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, G, cpriMode, CoordinateX1,
+		rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, cpriMode, CoordinateX1,
 						  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node)
 		network.elements[rrh.aId] = rrh
 
