@@ -8,7 +8,7 @@ def minEnergyPlacement(networkNodes, baseStation):
     #first checks if the cloud has capacity
     if baseStation.procDemand <= networkNodes["Cloud:0)"].processingCapacity:
         networkNodes["Cloud:0"].vBBUs[baseStation.aId] = baseStation.procDemand
-        networkNodes["Cloud:0)"].processingCapacity -= baseStation.procDemand
+        networkNodes["Cloud:0"].processingCapacity -= baseStation.procDemand
         baseStation.processingNode = networkNodes["Cloud:0)"]
         return networkNodes["Cloud:0)"]
     #otherwise, check the serving fog node of the RRH
@@ -38,7 +38,7 @@ def cloudLeastLoadedFog(networkNodes, fogNodes, baseStation):
     #first,check if the cloud has capacity
     if baseStation.procDemand <= networkNodes["Cloud:0)"].processingCapacity:
         networkNodes["Cloud:0"].vBBUs[baseStation.aId] = baseStation.procDemand
-        networkNodes["Cloud:0)"].processingCapacity -= baseStation.procDemand
+        networkNodes["Cloud:0"].processingCapacity -= baseStation.procDemand
         baseStation.processingNode = networkNodes["Cloud:0)"]
         return networkNodes["Cloud:0)"]
     #otherwise, check every fog node
@@ -58,7 +58,7 @@ def cloudMostLoadedFog(networkNodes, fogNodes, baseStation):
     #first,check if the cloud has capacity
     if baseStation.procDemand <= networkNodes["Cloud:0)"].processingCapacity:
         networkNodes["Cloud:0"].vBBUs[baseStation.aId] = baseStation.procDemand
-        networkNodes["Cloud:0)"].processingCapacity -= baseStation.procDemand
+        networkNodes["Cloud:0"].processingCapacity -= baseStation.procDemand
         baseStation.processingNode = networkNodes["Cloud:0)"]
         return networkNodes["Cloud:0)"]
     #otherwise, check every fog node
