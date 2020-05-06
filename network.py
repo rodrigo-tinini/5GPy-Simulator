@@ -30,27 +30,25 @@ chosenAlgorithm = None
 #this class represents a general frame
 #aId is the fram id, payLoad is its data, src and dst is the source and destiny element, nextHop keeps the path from src to dst, procTime is the average time to process this frame
 class Frame(object):
-	def __init__(self, aId, payLoad, src, dst):
+	def __init__(self, aId, src, dst):
 		self.aId = aId
-		self.payLoad = payLoad
+		self.payLoad = []
+		self.load = 0
 		self.src = src
 		self.dst = dst
 		self.nextHop = []
 		self.inversePath = []#return path
 		self.aType = None
-		self.content = None
-		self.control = False
 
 #this class extends the basic frame to represent a basic eCPRI frame
 #the ideia is that it carries payload from several users equipments and can carry one or more QoS classes of service
 #users is a list of UEs being carried, 
 #QoS are the classes of service carried on this fram and size is the bit rate of the frame
-class ecpriFrame(Frame):
-	def __init__(self, aId, payLoad, src, dst, users, QoS, size):
-		super().__init__(aId, payLoad, src, dst)
+class cpriFrame(Frame):
+	def __init__(self, aId, src, dst, users, QoS):
+		super().__init__(aId, src, dst)
 		self.users = users
 		self.QoS = QoS
-		self.size = size
 
 #this class represents a basic user equipment
 #aId is the UE identification, posY and posX are the locations of the UE in a cartesian plane, applicationType is the kind of application accessed by the UE (e.g., video, messaging)
@@ -70,6 +68,8 @@ class UserEquipment(object):
 		self.lastLatency = 0.0
 		self.signalStrength = self.servingRRH.signalStrength
 		self.interRRHs = []
+		self.upLinkBitRate = 1500#uplink bit rate per ms (ms because of the generation interval for frames, so it may change)
+		self.QoS = None
 
 	#this method verifies the RSSI of the signal of the UE and triggers the CoMP process if it is below the threshold (however, the processing of the CoMP set will be delegated to another method)
 	#when triggering the CoMP process, the UE will send its position
@@ -230,7 +230,7 @@ class RRH(object):
 		while True:
 			yield self.env.timeout(self.distribution(self))
 			#a limit for the generation of UEs for testing purposes
-			if len(self.users) < 100:
+			if len(self.users) < 10:
 				ue = UserEquipment(self.env, i, self, "Messaging", self.localTransmissionTime)
 				self.users.append(ue)
 				#print("{} generated UE {} at {}".format(self.aId, hash(ue), self.env.now))
@@ -257,34 +257,20 @@ class RRH(object):
 			self.frames.append(r)
 
 	#generate a CPRI frame
-	def cpriFrameGeneration(self, aId, payLoad, src, dst, QoS, size, frame_id):
+	def cpriFrameGeneration(self, aId, src, dst, QoS, frame_id):
 		#take each UE and put it into the CPRI frame
 		activeUsers = []
 		if src.users:
 			for i in src.users:
 				activeUsers.append(i)
 		#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
-		CPRIFrame = ecpriFrame(src.aId+"->"+str(frame_id), None, src, "Cloud:0", activeUsers, None, None)
+		CPRIFrame = cpriFrame(src.aId+"->"+str(frame_id), src, dst, activeUsers, QoS)
 		#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
 		if src.users:
 			for i in src.users:
 				i.lastLatency = i.latency
 				i.latency = (i.latency + self.env.now)/frame_id
 		return CPRIFrame
-
-	#generate the eCPRI frame
-	def e_CpriFrameGeneration(self, aId, payLoad, src, dst, QoS, size, frame_id):
-		activeUsers = []
-		if src.users:
-			for i in src.users:
-				activeUsers.append(i)
-		frame_size = len(activeUsers)
-		eCPRIFrame = ecpriFrame(src.aId+"->"+str(frame_id), None, src, "Cloud:0", activeUsers, None, frame_size)
-		#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
-		if src.users:
-			for i in src.users:
-				i.latency = (i.latency + self.env.now)/frame_id
-		return eCPRIFrame
 
 	#this method triggers the CoMP process for an UE
 	def triggerCoMP(self):
@@ -325,7 +311,7 @@ class RRH(object):
 					if self.cpriMode == "CPRI":
 						#print(psutil.virtual_memory().percent)
 						print("{} generating CPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
-						eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), None, self, "Cloud:0", None, None, frame_id)
+						eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), self, self.processingNode.aId, None, frame_id)
 						generatedCPRI += 1
 					elif self.cpriMode == "eCPRI":
 						#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
@@ -348,7 +334,6 @@ class RRH(object):
 			if received_frame.users:
 				for i in received_frame.users:
 					yield self.env.timeout(self.localTransmissionTime)
-					#i.timeReceived[i] = self.env.now
 					#TODO: Implement the jitter calculation, using the lastLatency variable
 					i.jitter = (i.latency + self.env.now)/frame_id
 				#update the load on the buffer after processing the frame
@@ -484,3 +469,179 @@ class ControlPlane(object):
 			return wavelength
 		else:
 			return -1
+
+#******************************************************eCPRI***************************************************************************
+#size of the ethernet pay load
+maximumEthernetPayload = 15000#default value
+
+#enhanced CPRI packet
+class eCPRIFrame(Frame):
+	def __init__(self, aId, src, dst, QoS, srcUser, load):
+		super().__init__(aId, src, dst)
+		self.QoS = QoS
+		self.srcUser = srcUser
+		self.load = load
+
+# this class represents a base station operating under eCPRI
+class eRRH(RRH):
+	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime,
+				 cpriMode, eCpriEncap, x1, x2, y1, y2, signalStrength, controlPlane, fogNode):
+		#super().__init__(env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime,
+		#				 cpriMode, x1, x2, y1, y2, signalStrength, controlPlane, fogNode)
+		self.env = env
+		self.aType = "RRH"
+		self.aId = "RRH" + ":" + str(aId)
+		self.users = []  # list of active UEs served by this RRH
+		self.cpriMode = cpriMode  # type of cpri frames to be generated by the RRH
+		self.eCpriEncap = eCpriEncap
+		self.currentLoad = 0  # buffer load
+		self.distribution = distribution  # the distribution for the traffic generator distribution
+		self.trafficGen = self.env.process(self.run())  # initiate the built-in traffic generator
+		if self.eCpriEncap == "IP":
+			self.uplinkTransmitCPRI = self.env.process(self.uplinkTransmitCPRI())  # send eCPRI frames as IP to a processing node
+			self.downlinkTransmitUE = self.env.process(self.downlinkTransmitUE())  # send frames to the UEs
+		elif self.eCpriEncap == "Ethernet":
+			self.uplinkTransmitEcpri = self.env.process(self.eCpriEthernetUplink())
+			self.downlinkTransmitUE = self.env.process(self.eCpriEthernetDownlink())
+		self.processingQueue = simpy.Store(self.env)  # keep downlink frames received
+		self.comp_monitor = self.env.process(self.triggerCoMP())  # waits for a RSSI notification from the UE
+		self.cpriFrameGenerationTime = cpriFrameGenerationTime
+		self.transmissionTime = transmissionTime
+		self.localTransmissionTime = localTransmissionTime
+		self.comp_notifications = simpy.Store(self.env)  # waits for a CoMP solicitation from a UE
+		self.CoordinateX1 = x1  # limiting coordinates of the base station area
+		self.CoordinateX2 = x2  # limiting coordinates of the base station area
+		self.CoordinateY1 = y1  # limiting coordinates of the base station area
+		self.CoordinateY2 = y2  # limiting coordinates of the base station area
+		self.adjacencies = {}  # each key is a range of coordinates expressed as a tuple, for instance, {("x1")}
+		self.signalStrength = signalStrength
+		self.path = None  # the path to be calculated between source and destiny
+		self.length = None  # the length of the path used by this RRH
+		self.allocatedWavelength = None  # the wavelength used by this RRH to transmit traffic
+		self.controlPlane = controlPlane  # reference to the control plane
+		self.fogNode = fogNode  # the serving fog node of this RRH (for instance, the closer RRH)
+		self.processingNode = None  # the processing node that hosts the RRH's vBBU
+		self.procDemand = 0
+
+	#create an eCPRI IP flow
+	def eCpriIpFlow(self):
+		# prepare the size of the flow - each UE will demand a separated packet in this approach (no QoS distinction)
+		frameId = 1
+		packets = []  # keep all the generated packets
+		for i in self.users:
+			bitRate = 0
+			# calculate the amount of packets (its bitRate per ms/ip packet size to generate to this user
+			bitRate = int(i.upLinkBitRate / 1500)
+			# create the amount of packets for this user
+			for j in range(bitRate):
+				packets.append(eCPRIFrame(frameId, self, None, i.QoS, i, i.upLinkBitRate))
+				# update the latency of each user when sending the packet to the RRH (to account latency and jitter later)
+				i.lastLatency = i.latency
+				i.latency = (i.latency + self.env.now)
+				frameId += 1
+		return packets
+
+		#send each eCPRI packet as an IP packet for each user
+	def uplinkTransmitCPRI(self):
+		global generatedCPRI
+		self.length, self.path = util.dijkstraShortestPath(self.controlPlane.graph, self.aId, "Cloud:0")#cloud is the default destination
+		while True:
+			yield self.env.timeout(self.cpriFrameGenerationTime)
+			# only send traffic if there are UEs connected
+			if self.users:
+				packets = self.eCpriIpFlow()
+				#send each packet
+				#print("Total flow of {} is {}".format(self.aId, len(packets)*1500))
+				#TODO define the split and destiny of each flow of packets
+				for i in packets:
+					#for testing purposes, each packet will be destinated to the cloud
+					i.dst = "Cloud:0"
+					generatedCPRI += 1
+					print(psutil.virtual_memory().percent)
+					print("Sending packet {} from {} at {}".format(i.aId, self.aId, self.env.now))
+					self.sendRequest(i)
+
+		#send the downlink packets back to the UEs
+	def downlinkTransmitUE(self):
+		while True:
+			received_frame = yield self.processingQueue.get()
+			#print("{} transmitting to its UEs".format(self.aId))
+			yield self.env.timeout(self.localTransmissionTime)
+			# TODO: Implement the jitter calculation, using the lastLatency variable
+			received_frame.srcUser.jitter = (received_frame.srcUser.latency + self.env.now)
+			# update the load on the buffer after processing the frame
+			self.currentLoad -= 1
+			del received_frame
+
+		# create a eCPRI Ethernet flow
+	def eCpriEthernetFlow(self):
+		# prepare the size of the flow - all UEs packets will be put on the same Ethernet frame (no QoS distinction)
+		packets = []  # keep all the generated packets
+		ethernetFrames = []#keep the ethernet frames containing the generated packets to be returned
+		currentFrame = None#to keep track of the current ethernet frame being populated by eCPRI packets
+		frameId = 1
+		#create a first ethernet frame
+		eFrame = Frame(frameId, self, None)
+		currentFrame = eFrame
+		ethernetFrames.append(eFrame)
+		for i in self.users:
+			bitRate = 0
+			# calculate the amount of packets (its bitRate per ms/ip packet size to generate to this user)
+			bitRate = int(i.upLinkBitRate / 1500)
+			# create the amount of packets for this user
+			for j in range(bitRate):
+				packets.append(eCPRIFrame(frameId, self, None, i.QoS, i, i.upLinkBitRate))
+				# update the latency of each user when sending the packet to the RRH (to account latency and jitter later)
+				i.lastLatency = i.latency
+				i.latency = (i.latency + self.env.now)
+		#put packets on the pay load of the ethernet frame
+		while packets:
+			# while there is packets to be encapsulated and capacity on an ethernet frame, put eCPRI packets on it
+			if currentFrame.load < maximumEthernetPayload:
+				p = packets.pop()
+				currentFrame.payLoad.append(p)
+				currentFrame.load += p.load
+			#if pay load limit if the ethernet frame was reached, create another one
+			else:
+				frameId += 1
+				newFrame = Frame(frameId, self, None)
+				currentFrame = newFrame
+				p = packets.pop()
+				currentFrame.payLoad.append(p)
+				currentFrame.load += p.load
+				ethernetFrames.append(newFrame)
+		return ethernetFrames
+
+		#send the flow of eCPRI packets as a flow of ethernet frames
+	def eCpriEthernetUplink(self):
+		global generatedCPRI
+		self.length, self.path = util.dijkstraShortestPath(self.controlPlane.graph, self.aId, "Cloud:0")#cloud is the default
+		frameId = 1
+		while True:
+			yield self.env.timeout(self.cpriFrameGenerationTime)
+			#only send traffic if there are UEs connected
+			if self.users:
+				frames = self.eCpriEthernetFlow()
+				#print("Total Ethernet flow of {} is {}".format(self.aId, len(frames)))
+				#TODO define the split and destiny of each flow of packets
+				#send each ethernet frame
+				for i in frames:
+					# for testing purposes, each packet will be destinated to the cloud
+					i.dst = "Cloud:0"
+					generatedCPRI += 1
+					#print("Sending Ethernet frame {} from {} at {}".format(i.aId, self.aId, self.env.now))
+					self.sendRequest(i)
+
+		# send the downlink packets back to the UEs
+	def eCpriEthernetDownlink(self):
+		while True:
+			received_frame = yield self.processingQueue.get()
+			# print("{} transmitting to its UEs".format(self.aId))
+			# extract each UE packet
+			for i in received_frame.payLoad:
+				yield self.env.timeout(self.localTransmissionTime)
+				# TODO: Implement the jitter calculation, using the lastLatency variable
+				i.srcUser.jitter = (i.srcUser.latency + self.env.now)
+				# update the load on the buffer after processing the frame
+				self.currentLoad -= 1
+			del received_frame
