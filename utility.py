@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import networkx as nx
 import random as np
 import network
+import copy
 
 #XML parser
 def xmlParser(xmlFile):
@@ -18,10 +19,32 @@ def xmlParser(xmlFile):
 		parameters[child.tag] = child
 	return parameters
 
-#call Dijkstra shortest path algorithm
+#call Dijkstra shortest path algorithm, returns lengths of the path and the path
 def dijkstraShortestPath(G, source, destiny):
 	length, path = nx.single_source_dijkstra(G, source, destiny)
 	return length, path
+
+#call Dijkstra shortest path algorithm, returns the path
+def dijkstraShortestPathOnly(G, source, destiny):
+	length, path = nx.single_source_dijkstra(G, source, destiny)
+	return path
+
+#format paths to remove the source node
+def formatPath(request, packetPath):
+	request.nextHop = copy.copy(packetPath)
+	#request.path = copy.copy(self.path)
+	#request.path.pop(0)
+	request.inversePath = list(request.nextHop)
+	request.inversePath.reverse()
+	request.inversePath.pop(0)
+
+#reverses the path to get the returning path
+def reversePath(request, path):
+	request.inversePath = list(request.nextHop)
+	request.inversePath.reverse()
+	request.inversePath.pop(0)
+	request.nextHop = request.inversePath
+
 
 #create the limits of each base station/RRH following a cartesian plane - obsolete, not being used
 def createNetworkLimits(limitX, limitY, stepX, stepY, elements):
