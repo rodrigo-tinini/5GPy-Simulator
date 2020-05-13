@@ -108,6 +108,16 @@ def createSimulation(env, parameters):
 	network.chosenAlgorithm = (parameters["InputParameters"].find("Algorithm").text)
 	network.ul_split = (parameters["InputParameters"].find("UplinkSplit").text)
 	network.dl_split = (parameters["InputParameters"].find("DownlinkSplit").text)
+	network.timeStamp = float(parameters["InputParameters"].find("timeStamp").text)
+
+	#create the list of base station loads
+	bsLoads = []
+	for l in parameters["MobileUsers"]:
+		for i in l.attrib.values():
+			bsLoads.append(int(i))
+		print(bsLoads)
+		bsLoads.reverse()
+		print(bsLoads)
 
 	#keep the input parameters for visualization or control purposes
 	inputParameters = []
@@ -176,7 +186,7 @@ def createSimulation(env, parameters):
 			if r["fogNode"] != "None":
 				fog_node = r["fogNode"]
 			rrh = network.RRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, cpriMode, CoordinateX1,
-							  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node)
+							  CoordinateX2, CoordinateY1, CoordinateY2, signalStrength, network.elements["ControlPlane:0"], fog_node, bsLoads)
 			network.elements[rrh.aId] = rrh
 	elif cpriMode == "eCPRI":
 		for r in rrhsParameters:
@@ -185,7 +195,7 @@ def createSimulation(env, parameters):
 				fog_node = r["fogNode"]
 			rrh = network.eRRH(env, r["aId"], distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime,
 							   cpriMode, eCpriEncap, CoordinateX1, CoordinateX2, CoordinateY1, CoordinateY2, signalStrength,
-							   network.elements["ControlPlane:0"], fog_node)
+							   network.elements["ControlPlane:0"], fog_node, bsLoads)
 			network.elements[rrh.aId] = rrh
 
 	#create the network nodes
