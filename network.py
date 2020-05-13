@@ -26,6 +26,9 @@ fogNodes = []
 generatedCPRI = 0
 #algorithm to be used
 chosenAlgorithm = None
+#downlink and uplink split option
+dl_split = None
+ul_split = None
 
 #this class represents a general frame
 #aId is the fram id, payLoad is its data, src and dst is the source and destiny element, nextHop keeps the path from src to dst, procTime is the average time to process this frame
@@ -34,11 +37,13 @@ class Frame(object):
 		self.aId = aId
 		self.payLoad = []
 		self.load = 0
+		self.originalLoad = 0#it is used to keep the original load of the frame in the case of modifying it on splits
 		self.src = src
 		self.dst = dst
 		self.nextHop = []
 		self.inversePath = []#return path
 		self.aType = None
+		self.splitPart = 1
 
 #this class extends the basic frame to represent a basic eCPRI frame
 #the ideia is that it carries payload from several users equipments and can carry one or more QoS classes of service
@@ -49,6 +54,11 @@ class cpriFrame(Frame):
 		super().__init__(aId, src, dst)
 		self.users = users
 		self.QoS = QoS
+
+#this class represents a simple ACK message
+class AckMessage(object):
+	def __init__(self):
+		self.nextHop = None
 
 #this class represents a basic user equipment
 #aId is the UE identification, posY and posX are the locations of the UE in a cartesian plane, applicationType is the kind of application accessed by the UE (e.g., video, messaging)
@@ -236,7 +246,7 @@ class RRH(object):
 		while True:
 			yield self.env.timeout(self.distribution(self))
 			#a limit for the generation of UEs for testing purposes
-			if len(self.users) < 10:
+			if len(self.users) < 100:
 				ue = UserEquipment(self.env, i, self, "Messaging", self.localTransmissionTime)
 				self.users.append(ue)
 				#print("{} generated UE {} at {}".format(self.aId, hash(ue), self.env.now))
@@ -336,16 +346,20 @@ class RRH(object):
 		while True:
 			#print(psutil.virtual_memory())
 			received_frame = yield self.processingQueue.get()
+			#check if it is an Harq Ack message
+			if isinstance(received_frame, AckMessage):
+				print("{} received an ack from processing node".format(self.aId))
 			#print("{} transmitting to its UEs".format(self.aId))
-			if received_frame.users:
-				for i in received_frame.users:
-					yield self.env.timeout(self.localTransmissionTime)
-					#TODO: Implement the jitter calculation, using the lastLatency variable
-					i.jitter = (i.latency + self.env.now)/frame_id
-				#update the load on the buffer after processing the frame
-				self.currentLoad -= 1
-				del received_frame
-				frame_id += 1
+			else:
+				if received_frame.users:
+					for i in received_frame.users:
+						yield self.env.timeout(self.localTransmissionTime)
+						#TODO: Implement the jitter calculation, using the lastLatency variable
+						i.jitter = (i.latency + self.env.now)/frame_id
+					#update the load on the buffer after processing the frame
+					self.currentLoad -= 1
+					frame_id += 1
+			del received_frame
 
 #basic network node to be extended
 class ActiveNode(metaclass=abc.ABCMeta):
@@ -403,6 +417,11 @@ class ProcessingNode(ActiveNode):
 			if self.aId == request.dst:#this is the destiny node. Process it and compute the downlink path
 				#print("Request {} arrived at destination {}".format(request.aId, self.aId))
 				request.nextHop = request.inversePath
+				# wait for the time to send the Harq ack frame
+				ackFrame = AckMessage()
+				# yield self.env.timeout(0.002750)
+				ackFrame.nextHop = copy.copy(request.nextHop)
+				self.sendRequest(ackFrame)
 			#print("{} buffer load is {}".format(self.aId, self.currentLoad))
 			#print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
 			yield self.env.timeout(self.procTime)
@@ -529,13 +548,13 @@ class eRRH(RRH):
 
 	#calculate the two paths for this RRH
 	def getPaths(self):
-		print("Getting paths for {}".format(self.aId))
+		#print("Getting paths for {}".format(self.aId))
 		self.path = util.dijkstraShortestPathOnly(self.controlPlane.graph, self.aId, self.processingNode.aId)
-		print("First path is {}".format(self.path))
+		#print("First path is {}".format(self.path))
 		self.secondPath = util.dijkstraShortestPathOnly(self.controlPlane.graph, self.processingNode.aId, self.secondProcessingNode.aId)
-		print("Second path is {}".format(self.secondPath))
+		#print("Second path is {}".format(self.secondPath))
 		self.returningPath = util.dijkstraShortestPathOnly(self.controlPlane.graph, self.aId, self.secondProcessingNode.aId)
-		print("Returning path is {}".format(self.returningPath))
+		#print("Returning path is {}".format(self.returningPath))
 
 	# send a message/frame to its connected switch
 	def sendRequest(self, request):
@@ -607,12 +626,16 @@ class eRRH(RRH):
 	def downlinkTransmitUE(self):
 		while True:
 			received_frame = yield self.processingQueue.get()
-			print("{} transmitting IP packets to its UEs".format(self.aId))
-			yield self.env.timeout(self.localTransmissionTime)
-			# TODO: Implement the jitter calculation, using the lastLatency variable
-			received_frame.srcUser.jitter = (received_frame.srcUser.latency + self.env.now)
-			# update the load on the buffer after processing the frame
-			self.currentLoad -= 1
+			# check if it is an Harq Ack message
+			if isinstance(received_frame, AckMessage):
+				print("{} received an ack from processing node".format(self.aId))
+			else:
+				print("{} transmitting IP packets to its UEs at {}".format(self.aId, self.env.now))
+				yield self.env.timeout(self.localTransmissionTime)
+				# TODO: Implement the jitter calculation, using the lastLatency variable
+				received_frame.srcUser.jitter = (received_frame.srcUser.latency + self.env.now)
+				# update the load on the buffer after processing the frame
+				self.currentLoad -= 1
 			del received_frame
 
 		# create a eCPRI Ethernet flow
@@ -643,6 +666,7 @@ class eRRH(RRH):
 				p = packets.pop()
 				currentFrame.payLoad.append(p)
 				currentFrame.load += p.load
+				currentFrame.originalLoad = currentFrame.load#keep the original load
 			#if pay load limit if the ethernet frame was reached, create another one
 			else:
 				frameId += 1
@@ -651,13 +675,17 @@ class eRRH(RRH):
 				p = packets.pop()
 				currentFrame.payLoad.append(p)
 				currentFrame.load += p.load
+				currentFrame.originalLoad = currentFrame.load  # keep the original load
 				ethernetFrames.append(newFrame)
 		return ethernetFrames
 
 		#send the flow of eCPRI packets as a flow of ethernet frames
 	def eCpriEthernetUplink(self):
 		global generatedCPRI
-		self.length, self.path = util.dijkstraShortestPath(self.controlPlane.graph, self.aId, "Cloud:0")#cloud is the default
+		#self.length, self.path = util.dijkstraShortestPath(self.controlPlane.graph, self.aId, "Cloud:0")#cloud is the default
+		self.processingNode = elements["Fog:1"]
+		self.secondProcessingNode = elements["Cloud:0"]
+		self.getPaths()
 		frameId = 1
 		while True:
 			yield self.env.timeout(self.cpriFrameGenerationTime)
@@ -671,27 +699,31 @@ class eRRH(RRH):
 					# for testing purposes, each packet will be destinated to the cloud
 					i.dst = "Cloud:0"
 					generatedCPRI += 1
-					#print("Sending Ethernet frame {} from {} at {}".format(i.aId, self.aId, self.env.now))
+					print("Sending Ethernet frame {} from {} at {}".format(i.aId, self.aId, self.env.now))
 					self.sendRequest(i)
 
 		# send the downlink packets back to the UEs
 	def eCpriEthernetDownlink(self):
 		while True:
 			received_frame = yield self.processingQueue.get()
-			print("{} transmitting eth to its UEs".format(self.aId))
-			# extract each UE packet
-			for i in received_frame.payLoad:
-				yield self.env.timeout(self.localTransmissionTime)
-				# TODO: Implement the jitter calculation, using the lastLatency variable
-				i.srcUser.jitter = (i.srcUser.latency + self.env.now)
-				# update the load on the buffer after processing the frame
-				self.currentLoad -= 1
+			# check if it is an Harq Ack message
+			if isinstance(received_frame, AckMessage):
+				print("{} received an ack from processing node".format(self.aId))
+			else:
+				print("{} transmitting Ethernet frames (actually, ip packets :) ) to its UEs at {}".format(self.aId, self.env.now))
+				# extract each UE packet
+				for i in received_frame.payLoad:
+					yield self.env.timeout(self.localTransmissionTime)
+					# TODO: Implement the jitter calculation, using the lastLatency variable
+					i.srcUser.jitter = (i.srcUser.latency + self.env.now)
+					# update the load on the buffer after processing the frame
+					self.currentLoad -= 1
 			del received_frame
 
 #processing node supporting eCPRI
 class eProcessingNode(ProcessingNode):
 	def __init__(self, env, aId, aType, capacity, qos, procTime, transmissionTime, graph):
-		super().init(env, aId, aType, capacity, qos, procTime, transmissionTime, graph, controlPlane)
+		super().__init__(env, aId, aType, capacity, qos, procTime, transmissionTime, graph)
 
 	#process each part of the split of an eCPRI flow
 	def processRequest(self):
@@ -703,23 +735,41 @@ class eProcessingNode(ProcessingNode):
 			if request.splitPart == 1:
 				#process it
 				#yield self.env.timeout(self.proc)#arbitrary value for testing
-				#decrease the pay load of the packet/frame depending on the split option (values got from literature)
-				self.reducePayload(request)
+				#decrease the pay load of the packet/frame regarding the uplink eCPRI split
+				self.reduceUplinkPayload(request)
 				request.splitPart = 2
 				#get the path to the next processing node
-				print("This is node {} and path is {}".format(self.aId, request.src.secondPath))
+				#print("This is node {} and path is {}".format(self.aId, request.src.secondPath))
 				util.formatPath(request, request.src.secondPath)#note that the RRH (request.src) keeps the paths
 			elif request.splitPart == 2:#frame reached its second processing node
 				#process it and then send back
 				#yield self.env.timeout(self.transmissionTime)#arbitrary value for testing
+				#decrease the pay load of the packet/frame regarding the downlink eCPRI split
+				self.reduceDownLinkPayload(request)
 				util.reversePath(request, request.src.returningPath)
+				# wait for the time to send an Har ack message
+				ackFrame = AckMessage()
+				# yield self.env.timeout(0.002750)
+				ackFrame.nextHop = copy.copy(request.nextHop)
+				self.sendRequest(ackFrame)
 			#get the path to the src
 			self.currentLoad -= 1
 			self.sendRequest(request)
 
-	#reduce the pay load size of a packet/frame
-	def reducePayload(self, request):
-		request.load /= 2
+	#TODO This method simply reduce the load parameter of the packet/frame. Implement the generation of the amount of packets
+	#TODO regarding the new total pay load (for instance, RRH generate 100 Mbps in 100 packet, now uplink traffic is 50 Mbps and needs only 50 packets of full size
+	#reduce the pay load size of an eCPRI packet/frame on uplink direction
+	def reduceUplinkPayload(self, request):
+		request.load = (request.load/100)*12
+
+	#TODO Similarly to the reduceUplinkPayload case, implement the generation of new packets/frames regarding the new bit rate
+	#reduce the pay load of an eCPRI packet/frame on downlink direction
+	def reduceDownLinkPayload(self, request):
+		#check which split option is being used
+		if dl_split == "Option1":
+			request.load = (request.load / 100) * 6
+		elif dl_split == "Option2":
+			request.load = (request.load / 100) * 12
 
 #eCPRI SDN control plane
 class sdnController(ControlPlane):
