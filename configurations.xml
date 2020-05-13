@@ -25,6 +25,8 @@
         <CoordinateY2>-100</CoordinateY2>
         <signalStrength>10000</signalStrength>
         <wavelengthsAmount>4</wavelengthsAmount>
+        <UplinkSplit>Option1</UplinkSplit>
+        <DownlinkSplit>Option1</DownlinkSplit>
         <Algorithm>cloudPlacement</Algorithm>
     </InputParameters>
 
@@ -41,11 +43,13 @@
         <Node aId = "0" aType = "Switch" capacity = "10000" qos = "Standard" />
         <Node aId = "1" aType = "Switch" capacity = "10000" qos = "Standard" />
         <Node aId = "2" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "3" aType = "Switch" capacity = "10000" qos = "Standard" />
     </NetworkNodes>
 
 <!-- Processing nodes -->
     <ProcessingNodes>
         <Proc aId = "0" aType = "Cloud"  capacity = "100" qos = "Standard" />
+        <Proc aId = "1" aType = "Fog"  capacity = "100" qos = "Standard" />
     </ProcessingNodes>
 
 <!-- Control plane nodes -->
@@ -62,8 +66,9 @@
         <Edge  source = "Switch:0" destiny = "Switch:1" weight = "10" />
         <Edge  source = "Switch:1" destiny = "Switch:2" weight = "3.4" />
         <Edge  source = "Switch:2" destiny = "Switch:0" weight = "7" />
-        <Edge  source = "Switch:2" destiny = "Cloud:0" weight = "10" />
-        <Edge  source = "Switch:2" destiny = "ControlPlane:0" weight = "10" />
+        <Edge  source = "Switch:2" destiny = "Fog:1" weight = "10" />
+        <Edge  source = "Fog:1" destiny = "Switch:3" weight = "10" />
+        <Edge  source = "Switch:3" destiny = "Cloud:0" weight = "10" />
     </Edges>>
 
 <!-- Neightbors of each RRH -->
