@@ -39,11 +39,21 @@ def formatPath(request, packetPath):
 	request.inversePath.pop(0)
 
 #reverses the path to get the returning path
-def reversePath(request, path):
-	request.inversePath = list(request.nextHop)
-	request.inversePath.reverse()
-	request.inversePath.pop(0)
-	request.nextHop = request.inversePath
+def reversePath(request, path):#TODO arrumar isso, pois não está colocando o caminho de volta
+	#this method must invert path and remove any element that is a processing node
+	reverse_path = copy.copy(path)
+	reverse_path.reverse()
+	for i in reverse_path:
+		if i.startswith("Cloud") or i.startswith("Fog"):
+			reverse_path.remove(i)
+	#request.inversePath = list(request.nextHop)
+	#request.inversePath.reverse()
+	#request.inversePath.pop(0)
+	#request.nextHop = request.inversePath
+	request.nextHop = reverse_path
+	#print("Path is", path)
+	#print("Reverse is", reverse_path)
+	#print("Final path is", request.nextHop)
 
 
 #create the limits of each base station/RRH following a cartesian plane - obsolete, not being used
@@ -96,6 +106,8 @@ def createSimulation(env, parameters):
 	signalStrength = (parameters["InputParameters"].find("signalStrength").text)
 	network.wavelengthsAmount = int(parameters["InputParameters"].find("wavelengthsAmount").text)
 	network.chosenAlgorithm = (parameters["InputParameters"].find("Algorithm").text)
+	network.ul_split = (parameters["InputParameters"].find("UplinkSplit").text)
+	network.dl_split = (parameters["InputParameters"].find("DownlinkSplit").text)
 
 	#keep the input parameters for visualization or control purposes
 	inputParameters = []
@@ -184,9 +196,15 @@ def createSimulation(env, parameters):
 			network.fogNodes.append(net_node)
 
 	#create the processing nodes
-	for proc in procNodesParameters:
-		proc_node = network.ProcessingNode(env, proc["aId"], proc["aType"], float(proc["capacity"]), proc["qos"], frameProcTime, transmissionTime, G)
-		network.elements[proc_node.aId] = proc_node
+	if cpriMode == "CPRI":
+		for proc in procNodesParameters:
+			proc_node = network.ProcessingNode(env, proc["aId"], proc["aType"], float(proc["capacity"]), proc["qos"], frameProcTime, transmissionTime, G)
+			network.elements[proc_node.aId] = proc_node
+	elif cpriMode == "eCPRI":
+		for proc in procNodesParameters:
+			proc_node = network.eProcessingNode(env, proc["aId"], proc["aType"], float(proc["capacity"]), proc["qos"], frameProcTime, transmissionTime, G)
+			network.elements[proc_node.aId] = proc_node
+
 
 	#create the neighbors of each RRH
 	createNeighbors(parameters, network.elements)
