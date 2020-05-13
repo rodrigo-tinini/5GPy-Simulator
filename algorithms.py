@@ -95,3 +95,14 @@ def servingFogFirst(networkNodes, baseStation):
                 i.processingCapacity -= baseStation.procDemand
                 baseStation.processingNode = i
                 return i
+
+#**************************************************eCPRI Algorithms****************************************************
+
+#this method chooses the eCPRI split option for a RRH
+#it receives the base station itself, in function of the amount of UEs
+def chooseSplit(baseStation):
+    pass
+
+#it always puts the first split part on the fog of the base station and the second part on the cloud
+def splitServingFog(splits):
+    pass

@@ -28,6 +28,7 @@
         <UplinkSplit>Option1</UplinkSplit>
         <DownlinkSplit>Option1</DownlinkSplit>
         <Algorithm>cloudPlacement</Algorithm>
+        <timeStamp>10</timeStamp>
     </InputParameters>
 
 <!-- RRHs -->
@@ -71,13 +72,19 @@
         <Edge  source = "Switch:3" destiny = "Cloud:0" weight = "10" />
     </Edges>>
 
-<!-- Neightbors of each RRH -->
+<!-- Neighgbors of each RRH -->
     <Neighbors>
         <Neighbors src = "RRH:0" RightRRH = "RRH:1" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "RRH:2" DownSideRRH = "RRH:3" />
         <Neighbors src = "RRH:1" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "RRH:0" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "None" DownSideRRH = "None" />
         <Neighbors src = "RRH:2" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "None" DownSideRRH = "RRH:0" />
         <Neighbors src = "RRH:3" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "RRH:0" DownSideRRH = "None" />
     </Neighbors>
+
+<!-- Amount of user equipments (UEs or base station load) to increase at each time step of the simulation -->
+    <MobileUsers>
+        <Users amount_1 = "10" amount_2 = "20" amount_3 = "30" amount_4 = "40" amount_5 = "50" amount_6 = "60"
+               amount_7 = "70" amount_8 = "80" amount_9 = "90" amount_10 = "100" />
+    </MobileUsers>
 
 </config>
 
