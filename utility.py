@@ -29,6 +29,11 @@ def dijkstraShortestPathOnly(G, source, destiny):
 	length, path = nx.single_source_dijkstra(G, source, destiny)
 	return path
 
+#set the path of the second split part
+def setSecondPath(request):
+	request.nextHop = copy.copy(request.src.secondPath)
+	request.nextHop.pop(0)
+
 #format paths to remove the source node
 def formatPath(request, packetPath):
 	request.nextHop = copy.copy(packetPath)
