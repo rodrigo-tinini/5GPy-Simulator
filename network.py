@@ -31,7 +31,17 @@ dl_split = None
 ul_split = None
 #time stamp to change the load
 timeStamp = None
-
+#keep the total generated frames/packets
+ip_packets = []
+ethernet_frames = []
+#keep the occupied bandwidth on the fronthaul
+uplink_fronthaul_bandwidth = []
+downlink_fronthaul_bandwidth = []
+avg_ul_fronthaul = []
+avg_dl_fronthaul = []
+#keep the consumed memory and cpu
+consumed_memory = []
+consumed_cpu = []
 
 #this class represents a general frame
 #aId is the fram id, payLoad is its data, src and dst is the source and destiny element, nextHop keeps the path from src to dst, procTime is the average time to process this frame
@@ -233,16 +243,24 @@ class RRH(object):
 		self.uplinkTransmitCPRI = self.env.process(self.uplinkTransmitCPRI())  # send eCPRI frames to a processing node
 		self.downlinkTransmitUE = self.env.process(self.downlinkTransmitUE())#send frames to the UEs
 
+	#account the generated frames (to be invoked when traffic changes)
+	def accountFrames(self):
+		global ethernet_frames
+		ethernet_frames.append(generatedCPRI)
+		consumed_memory.append(psutil.virtual_memory().percent)
+		consumed_cpu.append(psutil.cpu_percent())
 
 	#changes the maximum amount of UEs
 	def changeLoad(self, timeStep):#time step is the time to change the load of base station; bsLoad is a list containing the loads
 		while True:
 			#wait for the time to change the load on the base station
 			yield self.env.timeout(timeStep)
+			#account the current amount of generated frames
+			self.accountFrames()
 			if self.bsLoads:#if list happens to be empty, continue with the current load
 				self.maximumLoad = self.bsLoads.pop()#TODO implement this on the configuration and utility modules
-			print("Now operating with {} UEs on {} at {}".format(self.maximumLoad, self.aId, self.env.now))
-			print("{} had {} UEs at {}".format(self.aId, len(self.users), self.env.now))
+			#print("Now operating with {} UEs on {} at {}".format(self.maximumLoad, self.aId, self.env.now))
+			#print("{} had {} UEs at {}".format(self.aId, len(self.users), self.env.now))
 			#self.maximumLoad += 10
 
 	#send a message/frame to its connected switch
@@ -483,6 +501,8 @@ class NetworkNode(ActiveNode):
 	def processRequest(self):
 		while True:
 			request = yield self.processingQueue.get()
+			#if not isinstance(request, AckMessage):
+			#	print("{} got request {} from {}".format(self.aId, request.aId, request.src.aId))
 			#yield self.env.timeout(self.switchTime)
 			#update the load on the buffer after processing the frame
 			self.currentLoad -= 1
@@ -493,7 +513,8 @@ class NetworkNode(ActiveNode):
 	def sendRequest(self, request):
 		nextHop = request.nextHop.pop(0)#returns the id of the next hop
 		destiny = elements[nextHop]#retrieve the next hop object searching by its id
-		#print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
+		#if not isinstance(request, AckMessage):
+		#	print("{} sending request {} to {}".format(self.aId, request.aId, destiny.aId))
 		#self.env.timeout(self.transmissionTime)
 		destiny.processingQueue.put(request)
 		#update the load on the buffer of the destiny node
@@ -534,7 +555,7 @@ class ControlPlane(object):
 
 #******************************************************eCPRI***************************************************************************
 #size of the ethernet pay load
-maximumEthernetPayload = 15000#default value
+maximumEthernetPayload = 1500#default value in bytes
 
 #enhanced CPRI packet
 class eCPRIFrame(Frame):
@@ -557,10 +578,20 @@ class eRRH(RRH):
 		self.splitOption = None
 		self.secondPath = None#path for the second part of the split
 		self.returningPath = None#return pat hfrom the second node to the source
+		self.frameId = 0
+
+	#account the ethernet frames or IP packets generated
+	def accountFrames(self):#TODO move it to a control plane method that accounts for the entire network
+		global ethernet_frames, ip_packets, avg_dl_fronthaul, avg_ul_fronthaul, uplink_fronthaul_bandwidth, downlink_fronthaul_bandwidth
+		#check which type of encapsulation was used in this RRH
+		if self.eCpriEncap == "Ethernet":
+			ethernet_frames.append(generatedCPRI)
+		elif self.eCpriEncap == "IP":
+			ip_packets.append(generatedCPRI)
 
 	#override the start operation method
 	def startOperation(self):
-		print("{} starts operating with {}".format(self.aId, self.maximumLoad))
+		#print("{} starts operating with {}".format(self.aId, self.maximumLoad))
 		if self.eCpriEncap == "IP":
 			self.uplinkTransmitCPRI = self.env.process(self.uplinkTransmitCPRI())  # send eCPRI frames as IP to a processing node
 			self.downlinkTransmitUE = self.env.process(self.downlinkTransmitUE())  # send frames to the UEs
@@ -602,7 +633,7 @@ class eRRH(RRH):
 		for i in self.users:
 			bitRate = 0
 			# calculate the amount of packets (its bitRate per ms/ip packet size to generate to this user
-			bitRate = int(i.upLinkBitRate / 1500)
+			bitRate = int(i.upLinkBitRate / 150)#150 is a default packet size (defined by me) in bytes
 			# create the amount of packets for this user
 			for j in range(bitRate):
 				packets.append(eCPRIFrame(frameId, self, None, i.QoS, i, i.upLinkBitRate))
@@ -637,8 +668,8 @@ class eRRH(RRH):
 					#for testing purposes, each packet will be destinated to the cloud
 					i.dst = "Cloud:0"
 					generatedCPRI += 1
-					#print(psutil.virtual_memory().percent)
-					#print("Sending IP packets {} from {} at {}".format(i.aId, self.aId, self.env.now))
+					print(psutil.virtual_memory().percent)
+					print("Sending IP packets {} from {} at {}".format(i.aId, self.aId, self.env.now))
 					#before sending, calculate the split regarding the QoS of the packets
 					#after calculating the split, send a message to the SDN controller
 					#format the path
@@ -667,18 +698,18 @@ class eRRH(RRH):
 		packets = []  # keep all the generated packets
 		ethernetFrames = []#keep the ethernet frames containing the generated packets to be returned
 		currentFrame = None#to keep track of the current ethernet frame being populated by eCPRI packets
-		frameId = 1
+		#frameId = 1
 		#create a first ethernet frame
-		eFrame = Frame(frameId, self, None)
+		eFrame = Frame(self.frameId, self, None)
 		currentFrame = eFrame
 		ethernetFrames.append(eFrame)
 		for i in self.users:
 			bitRate = 0
 			# calculate the amount of packets (its bitRate per ms/ip packet size to generate to this user)
-			bitRate = int(i.upLinkBitRate / 1500)
+			bitRate = int(i.upLinkBitRate / 150)#150 is the default ip packet size set by me
 			# create the amount of packets for this user
 			for j in range(bitRate):
-				packets.append(eCPRIFrame(frameId, self, None, i.QoS, i, i.upLinkBitRate))
+				packets.append(eCPRIFrame(self.frameId, self, None, i.QoS, i, i.upLinkBitRate))
 				# update the latency of each user when sending the packet to the RRH (to account latency and jitter later)
 				i.lastLatency = i.latency
 				i.latency = (i.latency + self.env.now)
@@ -692,8 +723,8 @@ class eRRH(RRH):
 				currentFrame.originalLoad = currentFrame.load#keep the original load
 			#if pay load limit if the ethernet frame was reached, create another one
 			else:
-				frameId += 1
-				newFrame = Frame(frameId, self, None)
+				self.frameId += 1
+				newFrame = Frame(self.frameId, self, None)
 				currentFrame = newFrame
 				p = packets.pop()
 				currentFrame.payLoad.append(p)
@@ -709,10 +740,12 @@ class eRRH(RRH):
 		self.processingNode = elements["Fog:1"]
 		self.secondProcessingNode = elements["Cloud:0"]
 		self.getPaths()
-		frameId = 1
+		#frameId = 1
+		#packetLimit = 0#test variable to limit the generation of frames for debbuging purposes
 		while True:
 			yield self.env.timeout(self.cpriFrameGenerationTime)
 			#only send traffic if there are UEs connected
+			#if packetLimit < 1:
 			if self.users:
 				frames = self.eCpriEthernetFlow()
 				#print("Total Ethernet flow of {} is {}".format(self.aId, len(frames)))
@@ -724,6 +757,7 @@ class eRRH(RRH):
 					generatedCPRI += 1
 					#print("Sending Ethernet frame {} from {} at {}".format(i.aId, self.aId, self.env.now))
 					#print("{} has {} UEs".format(self.aId, len(self.users)))
+					#packetLimit += 1
 					self.sendRequest(i)
 
 		# send the downlink packets back to the UEs
@@ -735,7 +769,7 @@ class eRRH(RRH):
 				pass
 				#print("{} received an ack from processing node".format(self.aId))
 			else:
-				#print("{} transmitting Ethernet frames (actually, ip packets :) ) to its UEs at {}".format(self.aId, self.env.now))
+				print("{} transmitting Ethernet frames {} (actually, ip packets :) ) to its UEs at {}".format(self.aId, received_frame.aId, self.env.now))
 				# extract each UE packet
 				for i in received_frame.payLoad:
 					yield self.env.timeout(self.localTransmissionTime)
@@ -749,11 +783,30 @@ class eRRH(RRH):
 class eProcessingNode(ProcessingNode):
 	def __init__(self, env, aId, aType, capacity, qos, procTime, transmissionTime, graph):
 		super().__init__(env, aId, aType, capacity, qos, procTime, transmissionTime, graph)
+		self.packets = 0
+		self.aggregatedDownlinkBandwidth = []
+		self.bitRate = []
+		self.monitorBandwidth = self.env.process(self.monitorBitrate())
+
+	#this method accounts the bit rate at each seconds (or any desired time interval)
+	def monitorBitrate(self):#TODO move this to a control plane method that accounts for the entire network
+		global downlink_fronthaul_bandwidth
+		while True:
+			yield self.env.timeout(timeStamp)
+			if self.aId == "Cloud:0":
+				#print("Downlink bitrate was", downlink_fronthaul_bandwidth)
+				#print("Got here at", self.env.now)
+				downlink_fronthaul_bandwidth.append((sum(self.aggregatedDownlinkBandwidth)/timeStamp)*8)
+				self.aggregatedDownlinkBandwidthBandwidth = []
+			# account the memory usage
+			consumed_memory.append(psutil.virtual_memory().percent)
+			consumed_cpu.append(psutil.cpu_percent())
 
 	#process each part of the split of an eCPRI flow
 	def processRequest(self):
 		while True:
 			request = yield self.processingQueue.get()
+			#print("{} get request {} from {} with part {} and dst {}".format(self.aId, request.aId, request.src.aId, request.splitPart, request.dst))
 			#after getting the request, check which part of the split is
 			#if it is the first part, process it, reduce the size of the pay load (regarding the split option)
 			#then, sends to the next destiny
@@ -761,11 +814,13 @@ class eProcessingNode(ProcessingNode):
 				#process it
 				#yield self.env.timeout(self.proc)#arbitrary value for testing
 				#decrease the pay load of the packet/frame regarding the uplink eCPRI split
-				self.reduceUplinkPayload(request)
+				#self.reduceUplinkPayload(request)
 				request.splitPart = 2
 				#get the path to the next processing node
 				#print("This is node {} and path is {}".format(self.aId, request.src.secondPath))
-				util.formatPath(request, request.src.secondPath)#note that the RRH (request.src) keeps the paths
+				#util.formatPath(request, request.src.secondPath)#note that the RRH (request.src) keeps the paths
+				util.setSecondPath(request)
+				#print("UP",uplink_fronthaul_bandwidth)
 			elif request.splitPart == 2:#frame reached its second processing node
 				#process it and then send back
 				#yield self.env.timeout(self.transmissionTime)#arbitrary value for testing
@@ -777,8 +832,14 @@ class eProcessingNode(ProcessingNode):
 				# yield self.env.timeout(0.002750)
 				ackFrame.nextHop = copy.copy(request.nextHop)
 				self.sendRequest(ackFrame)
+				#accounts the aggregated bandwidth
+				self.aggregatedDownlinkBandwidth.append(request.load)
+			self.packets += 1
+			#print("{} switched {} packets".format(self.aId, self.packets))
 			#get the path to the src
 			self.currentLoad -= 1
+			#print("Sending request {} to {}".format(request.aId, request.nextHop))
+			#exit()
 			self.sendRequest(request)
 
 	#TODO This method simply reduce the load parameter of the packet/frame. Implement the generation of the amount of packets
