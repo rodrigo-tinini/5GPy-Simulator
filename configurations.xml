@@ -28,15 +28,12 @@
         <UplinkSplit>Option1</UplinkSplit>
         <DownlinkSplit>Option1</DownlinkSplit>
         <Algorithm>cloudPlacement</Algorithm>
-        <timeStamp>10</timeStamp>
+        <timeStamp>1</timeStamp>
     </InputParameters>
 
 <!-- RRHs -->
     <RRHs>
         <RRH aId = "0" fogNode = "None" />
-        <RRH aId = "1" fogNode = "None"/>
-        <RRH aId = "2" fogNode = "None"/>
-        <RRH aId = "3" fogNode = "None"/>
     </RRHs>
 
 <!-- Network nodes -->
@@ -61,9 +58,6 @@
 <!-- Connections to construct the directed graph -->
     <Edges>
         <Edge  source = "RRH:0" destiny = "Switch:0" weight = "5.5" />
-        <Edge  source = "RRH:1" destiny = "Switch:1" weight = "5.5" />
-        <Edge  source = "RRH:2" destiny = "Switch:0" weight = "5.5" />
-        <Edge  source = "RRH:3" destiny = "Switch:2" weight = "5.5" />
         <Edge  source = "Switch:0" destiny = "Switch:1" weight = "10" />
         <Edge  source = "Switch:1" destiny = "Switch:2" weight = "3.4" />
         <Edge  source = "Switch:2" destiny = "Switch:0" weight = "7" />
@@ -75,10 +69,7 @@
 <!-- Neighgbors of each RRH -->
     <Neighbors>
         <Neighbors src = "RRH:0" RightRRH = "RRH:1" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "RRH:2" DownSideRRH = "RRH:3" />
-        <Neighbors src = "RRH:1" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "RRH:0" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "None" DownSideRRH = "None" />
-        <Neighbors src = "RRH:2" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "None" DownSideRRH = "RRH:0" />
-        <Neighbors src = "RRH:3" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "RRH:0" DownSideRRH = "None" />
-    </Neighbors>
+   </Neighbors>
 
 <!-- Amount of user equipments (UEs or base station load) to increase at each time step of the simulation -->
     <MobileUsers>

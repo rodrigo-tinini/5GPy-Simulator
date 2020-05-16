@@ -27,12 +27,18 @@ util.createSimulation(env, parameters)
 #starts the simulation
 print("------------------------------------------------------------SIMULATION STARTED AT {}------------------------------------------------------------".format(env.now))
 startMemory = psutil.virtual_memory().percent
-util.startSimulation(env, 100)
+util.startSimulation(env, 5)
 endMemory = psutil.virtual_memory().percent
 print("------------------------------------------------------------SIMULATION ENDED AT {}------------------------------------------------------------".format(env.now))
 #print(psutil.virtual_memory())#print the memory consumption for testing
 print("Start memory usage was {} and final memory usage was {}".format(startMemory, endMemory))
+print("\n")
 print("Total of CPRI basic frames: {}".format(network.generatedCPRI))
+print("Ethernet were:",network.ethernet_frames)
+print("IP were:",network.ip_packets)
+print("Consumed memory was",network.consumed_memory)
+print("Consumed CPRU was",network.consumed_cpu)
+print("Downlink fronthaul was",network.downlink_fronthaul_bandwidth)
 
 '''
 #Tests
