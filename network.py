@@ -72,6 +72,7 @@ class cpriFrame(Frame):
 class AckMessage(object):
 	def __init__(self):
 		self.nextHop = None
+		self.dst = None
 
 #this class represents a basic user equipment
 #aId is the UE identification, posY and posX are the locations of the UE in a cartesian plane, applicationType is the kind of application accessed by the UE (e.g., video, messaging)
@@ -369,7 +370,7 @@ class RRH(object):
 						eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), self, self.processingNode.aId, None, frame_id)
 						generatedCPRI += 1
 					elif self.cpriMode == "eCPRI":
-						#print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+						print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
 						eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
 						generatedCPRI += 1
 					#send the request to the next connected network element
@@ -453,13 +454,17 @@ class ProcessingNode(ActiveNode):
 	def processRequest(self):
 		while True:
 			request = yield self.processingQueue.get()
+			print("Current node processing is: ", self.aId)
 			if self.aId == request.dst:#this is the destiny node. Process it and compute the downlink path
-				#print("Request {} arrived at destination {}".format(request.aId, self.aId))
+				print("Request {} arrived at destination {}".format(request.aId, self.aId))
 				request.nextHop = request.inversePath
 				# wait for the time to send the Harq ack frame
 				ackFrame = AckMessage()
 				# yield self.env.timeout(0.002750)
 				ackFrame.nextHop = copy.copy(request.nextHop)
+				ackFrame.dst = copy.copy(request.dst)
+				print("{} sending HARQ ACK at {}".format(self.aId, self.env.now))
+				print("Destination of ACK is:  {}".format(ackFrame.nextHop))
 				self.sendRequest(ackFrame)
 			#print("{} buffer load is {}".format(self.aId, self.currentLoad))
 			#print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
@@ -467,6 +472,8 @@ class ProcessingNode(ActiveNode):
 			#self.processingCapacity -= 1
 			#update the load on the buffer after processing the frame
 			self.currentLoad -= 1
+			print("{} forwarding the request at {}".format(self.aId, self.env.now))
+			#print("{} Also sending the request as well after the ACK".format(self.aId))
 			self.sendRequest(request)
 
 	#transmit a request to its destiny	

@@ -27,7 +27,7 @@ util.createSimulation(env, parameters)
 #starts the simulation
 print("------------------------------------------------------------SIMULATION STARTED AT {}------------------------------------------------------------".format(env.now))
 startMemory = psutil.virtual_memory().percent
-util.startSimulation(env, 5)
+util.startSimulation(env, 1)
 endMemory = psutil.virtual_memory().percent
 print("------------------------------------------------------------SIMULATION ENDED AT {}------------------------------------------------------------".format(env.now))
 #print(psutil.virtual_memory())#print the memory consumption for testing
