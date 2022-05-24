@@ -5,13 +5,18 @@
 <config>
 <!-- Input parameters of the simulation-->
     <InputParameters>
-        <switchTime>0.0001</switchTime>            
-        <frameProcTime>0.0001</frameProcTime>            
-        <transmissionTime>0.0000001</transmissionTime>
-        <localTransmissionTime>0.0000001</localTransmissionTime>
-        <cpriFrameGenerationTime>0.001</cpriFrameGenerationTime>
+        <!-- Parameter for switching, processing and transmission times -->
+        <switchTime>0.000001</switchTime>
+        <frameProcTime>0.000001</frameProcTime>
+        <transmissionTime>0.001</transmissionTime>
+        <localTransmissionTime>0.001</localTransmissionTime>
+        <!-- Time interval to generate a CPRI/eCPRI frame -->
+        <cpriFrameGenerationTime>0.066</cpriFrameGenerationTime>
+        <!-- Distribution used for UEs generation at RRHs -->
         <distributionAverage>1000</distributionAverage>
-        <cpriMode>CPRI</cpriMode>
+        <!-- CPRI or eCPRI -->
+        <cpriMode>eCPRI</cpriMode>
+        <!-- Defines the encapsulation of eCPRI frames -->
         <eCpriEncap>Ethernet</eCpriEncap>
         <!-- Limits of the cartesian plane representing all the base stations topology -->
         <limitAxisY>2</limitAxisY>
@@ -19,15 +24,21 @@
         <!-- Values to increase the size of each base station regarding its representation on a cartesian plane -->
         <stepAxisY>1</stepAxisY>
         <stepAxisX>1</stepAxisX>
+        <!-- Maximum steps for each UE at each RRH in X and Y axis -->
         <CoordinateX1>100</CoordinateX1>
         <CoordinateX2>-100</CoordinateX2>
         <CoordinateY1>100</CoordinateY1>
         <CoordinateY2>-100</CoordinateY2>
+        <!-- Strength of a signal -->
         <signalStrength>10000</signalStrength>
+        <!-- Amount of wavelengths in the fronthaul/midhaul -->
         <wavelengthsAmount>4</wavelengthsAmount>
+        <!-- Split option selected for eCPRI RRHs (only used when eCPRI is used -->
         <UplinkSplit>Option1</UplinkSplit>
         <DownlinkSplit>Option1</DownlinkSplit>
+        <!-- Algorithm for placement of vBBUs -->
         <Algorithm>cloudPlacement</Algorithm>
+        <!-- Timestamp of a network monitor node that accounts simulation values -->
         <timeStamp>1</timeStamp>
     </InputParameters>
 
@@ -47,7 +58,7 @@
 <!-- Processing nodes -->
     <ProcessingNodes>
         <Proc aId = "0" aType = "Cloud"  capacity = "100" qos = "Standard" />
-        <Proc aId = "1" aType = "Fog"  capacity = "100" qos = "Standard" />
+        <Proc aId = "1" aType = "Fog"  capacity = "50" qos = "Standard" />
     </ProcessingNodes>
 
 <!-- Control plane nodes -->
@@ -68,7 +79,8 @@
 
 <!-- Neighgbors of each RRH -->
     <Neighbors>
-        <Neighbors src = "RRH:0" RightRRH = "RRH:1" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None" LeftInfDiagRRH = "None" UpSideRRH = "RRH:2" DownSideRRH = "RRH:3" />
+        <Neighbors src = "RRH:0" RightRRH = "None" RightSupDiagRRH = "None" RightInfDiagRRH = "None" LeftRRH = "None" LeftSupDiagRRH = "None"
+		LeftInfDiagRRH = "None" UpSideRRH = "RRH:2" DownSideRRH = "RRH:3" />
    </Neighbors>
 
 <!-- Amount of user equipments (UEs or base station load) to increase at each time step of the simulation -->

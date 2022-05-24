@@ -370,6 +370,7 @@ class RRH(object):
 						eCPRIFrame = self.cpriFrameGeneration(self.aId+"->"+str(frame_id), self, self.processingNode.aId, None, frame_id)
 						generatedCPRI += 1
 					elif self.cpriMode == "eCPRI":
+						# print(psutil.virtual_memory().percent)
 						print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
 						eCPRIFrame = self.e_CpriFrameGeneration(frame_id, None, self, "Cloud:0", None, frame_size, frame_id)
 						generatedCPRI += 1
@@ -455,12 +456,13 @@ class ProcessingNode(ActiveNode):
 		while True:
 			request = yield self.processingQueue.get()
 			print("Current node processing is: ", self.aId)
+			print("Consumed Memory: ",psutil.virtual_memory().percent)
 			if self.aId == request.dst:#this is the destiny node. Process it and compute the downlink path
 				print("Request {} arrived at destination {}".format(request.aId, self.aId))
 				request.nextHop = request.inversePath
 				# wait for the time to send the Harq ack frame
 				ackFrame = AckMessage()
-				# yield self.env.timeout(0.002750)
+				yield self.env.timeout(0.002750)#hypothetical timeout to send the harq #TODO change this later
 				ackFrame.nextHop = copy.copy(request.nextHop)
 				ackFrame.dst = copy.copy(request.dst)
 				print("{} sending HARQ ACK at {}".format(self.aId, self.env.now))
@@ -773,10 +775,11 @@ class eRRH(RRH):
 			received_frame = yield self.processingQueue.get()
 			# check if it is an Harq Ack message
 			if isinstance(received_frame, AckMessage):
-				pass
-				#print("{} received an ack from processing node".format(self.aId))
+				#pass
+				print("{} received an ack from processing node".format(self.aId))
 			else:
-				print("{} transmitting Ethernet frames {} (actually, ip packets :) ) to its UEs at {}".format(self.aId, received_frame.aId, self.env.now))
+				#print("{} transmitting Ethernet frames {} (actually, ip packets :) ) to its UEs at {}".format(self.aId, received_frame.aId, self.env.now))
+				print("{} transmitting Ethernet frames {}: to its UEs at {}".format(self.aId, received_frame.aId, self.env.now))
 				# extract each UE packet
 				for i in received_frame.payLoad:
 					yield self.env.timeout(self.localTransmissionTime)
@@ -813,7 +816,8 @@ class eProcessingNode(ProcessingNode):
 	def processRequest(self):
 		while True:
 			request = yield self.processingQueue.get()
-			#print("{} get request {} from {} with part {} and dst {}".format(self.aId, request.aId, request.src.aId, request.splitPart, request.dst))
+			print("{} get request {} from {} with part {} and dst {}".format(self.aId, request.aId, request.src.aId, request.splitPart, request.dst))
+			print("Consumed Memory: ", psutil.virtual_memory().percent)
 			#after getting the request, check which part of the split is
 			#if it is the first part, process it, reduce the size of the pay load (regarding the split option)
 			#then, sends to the next destiny
@@ -845,7 +849,7 @@ class eProcessingNode(ProcessingNode):
 			#print("{} switched {} packets".format(self.aId, self.packets))
 			#get the path to the src
 			self.currentLoad -= 1
-			#print("Sending request {} to {}".format(request.aId, request.nextHop))
+			print("\t{} Sending request {} to {}".format(self.aId, request.aId, request.nextHop))
 			#exit()
 			self.sendRequest(request)
 
